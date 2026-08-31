@@ -1,0 +1,1348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="A hands-on, click-and-drag primer on machine learning: glossary, curve-fitting, gradient descent, neurons, tokenization, embeddings, and attention, all playable in the browser.">
+<title>Signal & Weight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #EEEFE9;
+    --surface: #FFFFFF;
+    --surface-2: #E4E4DC;
+    --ink: #1B2430;
+    --muted: #5B6472;
+    --hair: #CBCABD;
+    --accent: #B8791E;
+    --accent-ink: #4A3308;
+    --accent-soft: #F0DCB4;
+    --accent2: #2E6367;
+    --accent2-soft: #D9E6E4;
+    --pos: #2E6367;
+    --neg: #A8482F;
+    --shadow: 0 1px 0 rgba(27,36,48,.06), 0 8px 24px -16px rgba(27,36,48,.35);
+    --radius-panel: 3px;
+    --radius-dial: 999px;
+    --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+    --font-body: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg: #14181D;
+      --surface: #1B2127;
+      --surface-2: #232A31;
+      --ink: #E9E7DD;
+      --muted: #9AA3AC;
+      --hair: #343C44;
+      --accent: #E3A64B;
+      --accent-ink: #FBEBCC;
+      --accent-soft: #3A2E10;
+      --accent2: #6FB8B0;
+      --accent2-soft: #1C2F2E;
+      --pos: #6FB8B0;
+      --neg: #E08A6E;
+      --shadow: 0 1px 0 rgba(0,0,0,.4), 0 8px 30px -16px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg: #14181D;
+    --surface: #1B2127;
+    --surface-2: #232A31;
+    --ink: #E9E7DD;
+    --muted: #9AA3AC;
+    --hair: #343C44;
+    --accent: #E3A64B;
+    --accent-ink: #FBEBCC;
+    --accent-soft: #3A2E10;
+    --accent2: #6FB8B0;
+    --accent2-soft: #1C2F2E;
+    --pos: #6FB8B0;
+    --neg: #E08A6E;
+    --shadow: 0 1px 0 rgba(0,0,0,.4), 0 8px 30px -16px rgba(0,0,0,.6);
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} *{animation-duration:.001ms !important; transition-duration:.001ms !important;} }
+
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    font-size:16px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--accent-soft); color:var(--accent-ink); }
+  a{ color:var(--accent2); }
+  h1,h2,h3{ font-family:var(--font-display); text-wrap:balance; margin:0; color:var(--ink); }
+  p{ margin:0 0 1em; max-width:62ch; color:var(--ink); }
+  .mono{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  .muted{ color:var(--muted); }
+  button, input[type="range"], select{ font-family:inherit; }
+  button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible{
+    outline:2px solid var(--accent2); outline-offset:2px;
+  }
+  .visually-hidden{ position:absolute; width:1px;height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+
+  /* ---------- shell layout ---------- */
+  .shell{
+    display:grid;
+    grid-template-columns: 250px minmax(0,1fr);
+    max-width:1320px;
+    margin:0 auto;
+  }
+  @media (max-width: 900px){ .shell{ grid-template-columns: 1fr; } }
+
+  .rail{
+    position:sticky; top:0; align-self:start;
+    height:100dvh; overflow-y:auto;
+    padding:28px 18px 28px 28px;
+    border-right:1px solid var(--hair);
+  }
+  @media (max-width:900px){ .rail{ position:static; height:auto; border-right:none; border-bottom:1px solid var(--hair); padding:20px; } }
+  .rail-brand{ display:flex; align-items:baseline; gap:8px; margin-bottom:22px; }
+  .rail-brand .mark{ font-family:var(--font-display); font-weight:700; font-size:20px; letter-spacing:-.02em; }
+  .rail-brand .sub{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+  .rail nav{ display:flex; flex-direction:column; gap:2px; margin-bottom:22px; }
+  .rail nav a{
+    text-decoration:none; color:var(--muted); font-size:13.5px; padding:7px 10px; border-radius:2px;
+    display:flex; gap:10px; align-items:baseline;
+  }
+  .rail nav a .n{ font-family:var(--font-mono); font-size:11px; color:var(--muted); opacity:.7; }
+  .rail nav a:hover{ background:var(--surface-2); color:var(--ink); }
+  .rail nav a.hard{ color:var(--accent-ink); background:var(--accent-soft); }
+  .rail-note{ font-size:12px; color:var(--muted); border-top:1px solid var(--hair); padding-top:14px; }
+  .theme-toggle{
+    margin-top:16px; display:flex; gap:6px; border:1px solid var(--hair); border-radius:var(--radius-dial);
+    padding:3px; width:fit-content;
+  }
+  .theme-toggle button{
+    border:none; background:transparent; color:var(--muted); font-size:11px; padding:5px 10px;
+    border-radius:var(--radius-dial); cursor:pointer; text-transform:uppercase; letter-spacing:.05em;
+  }
+  .theme-toggle button.active{ background:var(--ink); color:var(--bg); }
+
+  main{ min-width:0; }
+
+  /* ---------- hero ---------- */
+  .hero{ padding:64px 48px 40px; border-bottom:1px solid var(--hair); }
+  @media (max-width:640px){ .hero{ padding:40px 20px 28px; } }
+  .hero .kicker{ font-family:var(--font-mono); font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); margin-bottom:14px; }
+  .hero h1{ font-size:clamp(34px,5vw,58px); font-weight:600; line-height:1.05; margin-bottom:18px; }
+  .hero h1 em{ font-style:italic; color:var(--accent); }
+  .hero p.lede{ font-size:18px; color:var(--muted); max-width:60ch; }
+  .hero-meta{ display:flex; gap:28px; flex-wrap:wrap; margin-top:28px; font-family:var(--font-mono); font-size:12px; color:var(--muted); }
+  .hero-meta b{ color:var(--ink); font-weight:600; }
+
+  /* ---------- exhibit shell ---------- */
+  .exhibit{ padding:56px 48px; border-bottom:1px solid var(--hair); scroll-margin-top:20px; }
+  @media (max-width:640px){ .exhibit{ padding:36px 20px; } }
+  .exhibit-head{ display:flex; align-items:baseline; gap:14px; margin-bottom:8px; flex-wrap:wrap; }
+  .exhibit-eyebrow{ font-family:var(--font-mono); font-size:12px; color:var(--accent); letter-spacing:.06em; }
+  .exhibit h2{ font-size:clamp(24px,3vw,34px); font-weight:600; }
+  .exhibit .dek{ color:var(--muted); font-size:16px; max-width:68ch; margin-bottom:28px; }
+
+  .panel{
+    background:var(--surface); border:1px solid var(--hair); border-radius:var(--radius-panel);
+    box-shadow:var(--shadow); padding:22px;
+  }
+  .panel + .panel{ margin-top:16px; }
+  .panel-title{ font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:14px; display:flex; justify-content:space-between; gap:12px; }
+
+  .readout-row{ display:flex; gap:22px; flex-wrap:wrap; margin-top:14px; }
+  .readout{ min-width:120px; }
+  .readout .k{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+  .readout .v{ font-family:var(--font-mono); font-size:20px; font-weight:600; }
+  .readout .v.pos{ color:var(--pos); }
+  .readout .v.neg{ color:var(--neg); }
+
+  .controls{ display:flex; gap:20px; flex-wrap:wrap; align-items:flex-end; margin-top:16px; }
+  .control{ display:flex; flex-direction:column; gap:6px; min-width:160px; }
+  .control label{ font-size:12px; color:var(--muted); display:flex; justify-content:space-between; gap:8px; }
+  .control label .val{ font-family:var(--font-mono); color:var(--ink); }
+  input[type="range"]{
+    -webkit-appearance:none; appearance:none; width:100%; height:4px; border-radius:2px;
+    background:var(--hair); outline-offset:4px;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+    background:var(--accent); border:2px solid var(--surface); box-shadow:0 0 0 1px var(--accent); cursor:pointer;
+  }
+  input[type="range"]::-moz-range-thumb{
+    width:16px; height:16px; border-radius:50%; background:var(--accent); border:2px solid var(--surface);
+    box-shadow:0 0 0 1px var(--accent); cursor:pointer;
+  }
+  .btn{
+    font-family:var(--font-mono); font-size:12.5px; text-transform:uppercase; letter-spacing:.05em;
+    background:var(--ink); color:var(--bg); border:1px solid var(--ink); padding:9px 16px; border-radius:2px;
+    cursor:pointer;
+  }
+  .btn:hover{ opacity:.85; }
+  .btn.ghost{ background:transparent; color:var(--ink); border:1px solid var(--hair); }
+  .btn.ghost:hover{ border-color:var(--ink); }
+  .btn-row{ display:flex; gap:8px; flex-wrap:wrap; }
+  select.control-select{
+    background:var(--surface); color:var(--ink); border:1px solid var(--hair); border-radius:2px; padding:8px 10px; font-size:13px;
+  }
+
+  .canvas-wrap{ width:100%; overflow-x:auto; }
+  canvas{ display:block; max-width:100%; }
+
+  .callout{
+    background:var(--accent2-soft); border-left:3px solid var(--accent2); padding:14px 16px;
+    font-size:14px; border-radius:2px; margin-top:16px;
+  }
+  .callout p:last-child{ margin-bottom:0; }
+  .callout .lbl{ font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent2); margin-bottom:6px; display:block; }
+
+  /* ---------- glossary ---------- */
+  .gloss-filters{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+  .gloss-filters button{
+    font-family:var(--font-mono); font-size:12px; padding:6px 12px; border-radius:var(--radius-dial);
+    border:1px solid var(--hair); background:var(--surface); color:var(--muted); cursor:pointer;
+  }
+  .gloss-filters button.active{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
+  .gloss-search{
+    width:100%; max-width:340px; padding:9px 12px; border:1px solid var(--hair); border-radius:2px;
+    background:var(--surface); color:var(--ink); font-size:14px; margin-bottom:20px;
+  }
+  .gloss-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:12px; }
+  .flip-card{ perspective:1200px; height:150px; cursor:pointer; }
+  .flip-inner{
+    position:relative; width:100%; height:100%; transition:transform .5s cubic-bezier(.4,.2,.2,1);
+    transform-style:preserve-3d;
+  }
+  .flip-card.flipped .flip-inner{ transform:rotateY(180deg); }
+  .flip-face{
+    position:absolute; inset:0; backface-visibility:hidden; border:1px solid var(--hair); border-radius:var(--radius-panel);
+    padding:16px; background:var(--surface); box-shadow:var(--shadow); display:flex; flex-direction:column;
+  }
+  .flip-face.back{ transform:rotateY(180deg); background:var(--surface-2); overflow-y:auto; }
+  .flip-face .tag{ font-family:var(--font-mono); font-size:10px; text-transform:uppercase; color:var(--accent); letter-spacing:.06em; }
+  .flip-face .term{ font-family:var(--font-display); font-weight:600; font-size:20px; margin-top:8px; }
+  .flip-face .hint{ margin-top:auto; font-size:11px; color:var(--muted); }
+  .flip-face .def{ font-size:13.5px; color:var(--ink); }
+  .gloss-empty{ color:var(--muted); font-size:14px; }
+
+  /* ---------- tokenizer ---------- */
+  .token-input{
+    width:100%; padding:12px 14px; border:1px solid var(--hair); border-radius:2px; background:var(--surface);
+    color:var(--ink); font-size:15px; font-family:var(--font-mono);
+  }
+  .token-chips{ display:flex; flex-wrap:wrap; gap:8px; margin-top:18px; min-height:44px; }
+  .chip{
+    font-family:var(--font-mono); font-size:13px; padding:6px 10px; border-radius:4px; color:#1B2430;
+    position:relative; cursor:default; border:1px solid rgba(0,0,0,.08);
+  }
+  .chip .id{ font-size:9px; opacity:.65; display:block; margin-top:1px; }
+
+  /* ---------- embedding space ---------- */
+  .embed-layout{ display:grid; grid-template-columns: minmax(0,1fr) 260px; gap:20px; }
+  @media (max-width:800px){ .embed-layout{ grid-template-columns:1fr; } }
+  .embed-legend{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  .legend-pill{
+    display:flex; align-items:center; gap:6px; font-size:12px; padding:5px 10px; border-radius:var(--radius-dial);
+    border:1px solid var(--hair); background:var(--surface); cursor:pointer; color:var(--muted);
+  }
+  .legend-pill .dot{ width:9px; height:9px; border-radius:50%; }
+  .legend-pill.off{ opacity:.35; }
+  .neighbor-list{ list-style:none; margin:0; padding:0; font-family:var(--font-mono); font-size:13px; }
+  .neighbor-list li{ display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--hair); }
+  .neighbor-list li .bar{ height:4px; background:var(--accent2); border-radius:2px; margin-top:4px; }
+
+  /* ---------- attention ---------- */
+  .attn-tokens{ display:flex; gap:6px; flex-wrap:wrap; margin:18px 0; }
+  .attn-token{
+    font-family:var(--font-mono); font-size:14px; padding:8px 12px; border-radius:4px; border:1px solid var(--hair);
+    background:var(--surface); cursor:pointer;
+  }
+  .attn-token.active{ background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  .vec-bars{ display:flex; gap:2px; height:16px; margin-top:6px; }
+  .vec-bars i{ flex:1; background:var(--accent2); border-radius:1px; align-self:flex-end; }
+
+  footer{ padding:48px; color:var(--muted); font-size:13px; }
+  footer a{ color:var(--muted); }
+  @media (max-width:640px){ footer{ padding:28px 20px; } }
+
+  .lifecycle-steps{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:0; counter-reset:step; }
+  .lifecycle-steps .step{ position:relative; padding:18px 14px 14px 0; border-right:1px dashed var(--hair); }
+  .lifecycle-steps .step:last-child{ border-right:none; }
+  .lifecycle-steps .step .num{ font-family:var(--font-mono); font-size:11px; color:var(--accent); }
+  .lifecycle-steps .step h4{ font-family:var(--font-body); font-weight:600; font-size:14px; margin:6px 0 4px; }
+  .lifecycle-steps .step p{ font-size:12.5px; color:var(--muted); margin:0; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <div class="rail-brand">
+      <span class="mark">Signal &amp; Weight</span>
+    </div>
+    <div class="rail-note sub" style="border:none;padding:0;margin-bottom:16px;">A hands-on field guide to machine learning</div>
+    <nav aria-label="Exhibits">
+      <a href="#glossary"><span class="n">00</span> Glossary</a>
+      <a href="#fit"><span class="n">01</span> How a Model Learns</a>
+      <a href="#descent"><span class="n">02</span> Finding the Bottom</a>
+      <a href="#neuron" class="hard"><span class="n">03</span> Inside a Neuron</a>
+      <a href="#tokens" class="hard"><span class="n">04</span> Breaking Language Apart</a>
+      <a href="#embeddings" class="hard"><span class="n">05</span> Meaning as Coordinates</a>
+      <a href="#attention"><span class="n">06</span> Putting It Together</a>
+    </nav>
+    <div class="theme-toggle" role="group" aria-label="Theme">
+      <button data-theme-btn="system" class="active">Auto</button>
+      <button data-theme-btn="light">Light</button>
+      <button data-theme-btn="dark">Dark</button>
+    </div>
+    <p class="rail-note" style="margin-top:16px;">The three marked exhibits are the ones that usually confuse people first — start there if you're short on time.</p>
+  </aside>
+
+  <main>
+    <section class="hero">
+      <div class="kicker">an interactive primer &middot; no coding required</div>
+      <h1>Machine learning,<br><em>played with your hands</em>, not read off a slide.</h1>
+      <p class="lede">Every term below is something you can drag, click, or break. Start with the glossary if a word trips you up, or jump straight to the three exhibits that explain how a neural network actually reads language — neurons, tokens, and embeddings.</p>
+      <div class="hero-meta">
+        <span><b>7</b> interactive exhibits</span>
+        <span><b>0</b> installs required</span>
+        <span><b>~5 yo</b> tested reading level, when explained aloud</span>
+      </div>
+    </section>
+
+    <!-- ================= 00 GLOSSARY ================= -->
+    <section class="exhibit" id="glossary">
+      <div class="exhibit-head"><span class="exhibit-eyebrow">Exhibit 00</span><h2>The Glossary</h2></div>
+      <p class="dek">Forty terms you'll hear in any machine learning conversation. Filter by topic, or search. Click a card to flip it.</p>
+      <input class="gloss-search" id="glossSearch" type="search" placeholder="Search a term, e.g. &ldquo;overfitting&rdquo;&hellip;" aria-label="Search glossary">
+      <div class="gloss-filters" id="glossFilters"></div>
+      <div class="gloss-grid" id="glossGrid"></div>
+      <p class="gloss-empty" id="glossEmpty" style="display:none;">No terms match that search.</p>
+    </section>
+
+    <!-- ================= 01 OVERFIT/UNDERFIT ================= -->
+    <section class="exhibit" id="fit">
+      <div class="exhibit-head"><span class="exhibit-eyebrow">Exhibit 01</span><h2>How a Model Learns — and How It Overreacts</h2></div>
+      <p class="dek">A model is just a curve trying to match a cloud of points. Drag the complexity slider and watch the same 18 data points get fit by curves that are too simple, then too obedient.</p>
+      <div class="panel">
+        <div class="panel-title"><span>Curve fit</span><span class="mono">degree = <span id="degLabel">1</span></span></div>
+        <div class="canvas-wrap"><canvas id="fitCanvas" width="760" height="380" role="img" aria-label="Scatter plot of data points with a fitted curve"></canvas></div>
+        <div class="controls">
+          <div class="control">
+            <label for="degSlider">Model complexity (polynomial degree) <span class="val" id="degVal">1</span></label>
+            <input type="range" id="degSlider" min="1" max="9" step="1" value="1">
+          </div>
+          <div class="btn-row">
+            <button class="btn ghost" id="fitRegen">New random data</button>
+          </div>
+        </div>
+        <div class="readout-row">
+          <div class="readout"><div class="k">Training error</div><div class="v mono" id="trainErr">–</div></div>
+          <div class="readout"><div class="k">Unseen (test) error</div><div class="v mono" id="testErr">–</div></div>
+          <div class="readout"><div class="k">Verdict</div><div class="v" id="fitVerdict" style="font-size:14px;">–</div></div>
+        </div>
+      </div>
+      <div class="callout"><span class="lbl">Why this matters</span><p>Low degree ignores the pattern (<b>underfitting</b>). Very high degree memorizes the noise in these exact 18 points instead of the shape underneath (<b>overfitting</b>) — training error drops to near zero while error on new points climbs back up. The sweet spot is wherever test error is lowest, not where training error is lowest.</p></div>
+    </section>
+
+    <!-- ================= 02 GRADIENT DESCENT ================= -->
+    <section class="exhibit" id="descent">
+      <div class="exhibit-head"><span class="exhibit-eyebrow">Exhibit 02</span><h2>Finding the Bottom</h2></div>
+      <p class="dek">Training a model means rolling a ball downhill on an error landscape until it settles. Click anywhere on the curve to drop the ball, then step it downhill.</p>
+      <div class="panel">
+        <div class="panel-title"><span>Loss landscape</span><span class="mono" id="stepCount">0 steps</span></div>
+        <div class="canvas-wrap"><canvas id="descentCanvas" width="760" height="340" role="img" aria-label="A curve representing error, with a ball rolling toward the lowest point"></canvas></div>
+        <div class="controls">
+          <div class="control">
+            <label for="lrSlider">Learning rate <span class="val" id="lrVal">0.05</span></label>
+            <input type="range" id="lrSlider" min="1" max="60" step="1" value="10">
+          </div>
+          <div class="btn-row">
+            <button class="btn" id="stepBtn">Step once</button>
+            <button class="btn" id="runBtn">Run to the bottom</button>
+            <button class="btn ghost" id="descentReset">Reset ball</button>
+          </div>
+        </div>
+        <div class="readout-row">
+          <div class="readout"><div class="k">Position (x)</div><div class="v mono" id="ballX">–</div></div>
+          <div class="readout"><div class="k">Error (height)</div><div class="v mono" id="ballY">–</div></div>
+          <div class="readout"><div class="k">Slope here</div><div class="v mono" id="ballSlope">–</div></div>
+        </div>
+      </div>
+      <div class="callout"><span class="lbl">Try this</span><p>Drop the ball on the small bump on the right and run it. A learning rate that's too small can get stuck in that shallow dip (a <b>local minimum</b>) instead of finding the true lowest point on the left (the <b>global minimum</b>). Crank the learning rate up and the ball may overshoot entirely.</p></div>
+    </section>
+
+    <!-- ================= 03 NEURON ================= -->
+    <section class="exhibit" id="neuron">
+      <div class="exhibit-head"><span class="exhibit-eyebrow">Exhibit 03 &middot; often confusing</span><h2>Inside a Neuron</h2></div>
+      <p class="dek">A neuron multiplies each incoming number by a <b>weight</b>, adds them up, and squashes the result through an <b>activation function</b>. Drag the two inputs. Drag up or down directly on any connecting line to change its weight and watch every downstream neuron react.</p>
+      <div class="panel">
+        <div class="panel-title"><span>Forward pass</span><span class="mono" id="netFormula">activation: sigmoid</span></div>
+        <div class="canvas-wrap"><svg id="netSvg" width="760" height="420" role="img" aria-label="A small neural network diagram with draggable connections"></svg></div>
+        <div class="controls">
+          <div class="control">
+            <label for="x1Slider">Input x&#8321; <span class="val" id="x1Val">0.50</span></label>
+            <input type="range" id="x1Slider" min="-100" max="100" step="1" value="50">
+          </div>
+          <div class="control">
+            <label for="x2Slider">Input x&#8322; <span class="val" id="x2Val">-0.30</span></label>
+            <input type="range" id="x2Slider" min="-100" max="100" step="1" value="-30">
+          </div>
+          <div class="control">
+            <label for="actSelect">Activation function</label>
+            <select class="control-select" id="actSelect">
+              <option value="sigmoid">Sigmoid</option>
+              <option value="tanh">Tanh</option>
+              <option value="relu">ReLU</option>
+            </select>
+          </div>
+          <div class="btn-row"><button class="btn ghost" id="netRegen">Randomize weights</button></div>
+        </div>
+        <div class="readout-row">
+          <div class="readout"><div class="k">Network output</div><div class="v mono" id="netOut">–</div></div>
+        </div>
+      </div>
+      <div class="callout"><span class="lbl">What you're seeing</span><p>Every line is a weight; its thickness is the weight's size and its color shows the sign — <span style="color:var(--pos)">teal strengthens</span>, <span style="color:var(--neg)">rust weakens</span>. Every circle is a neuron; brighter fill means it fired more strongly. <b>Training</b> a network is nothing more than automatically adjusting every one of these weights until the output matches what you wanted — the same drag you just did by hand, done by gradient descent instead.</p></div>
+    </section>
+
+    <!-- ================= 04 TOKENIZATION ================= -->
+    <section class="exhibit" id="tokens">
+      <div class="exhibit-head"><span class="exhibit-eyebrow">Exhibit 04 &middot; often confusing</span><h2>Breaking Language Into Pieces</h2></div>
+      <p class="dek">Before a model can read text, the text has to become numbers. The first step is chopping a sentence into <b>tokens</b> — sometimes whole words, sometimes word fragments. Type anything below.</p>
+      <div class="panel">
+        <div class="panel-title"><span>Tokenizer</span><span></span></div>
+        <input class="token-input" id="tokenInput" type="text" value="Machine learning turns unbelievably messy data into decisions." aria-label="Text to tokenize">
+        <div class="controls" style="margin-top:14px;">
+          <div class="control" style="min-width:220px;">
+            <label>Mode</label>
+            <div class="btn-row">
+              <button class="btn ghost active" data-tok-mode="word">Word-level</button>
+              <button class="btn ghost" data-tok-mode="sub">Subword-level</button>
+            </div>
+          </div>
+        </div>
+        <div class="token-chips" id="tokenChips"></div>
+        <div class="readout-row">
+          <div class="readout"><div class="k">Tokens</div><div class="v mono" id="tokCount">–</div></div>
+          <div class="readout"><div class="k">Unique tokens</div><div class="v mono" id="tokUnique">–</div></div>
+          <div class="readout"><div class="k">Chars per token</div><div class="v mono" id="tokRatio">–</div></div>
+        </div>
+      </div>
+      <div class="callout"><span class="lbl">Try this</span><p>Switch to subword mode and type a long or unusual word like <span class="mono">"antidisestablishmentarianism"</span> or a made-up one like <span class="mono">"blorptastic"</span>. The model has never seen the whole word before, but it has seen small pieces of it — so it reads the piece it recognizes and reasons about the rest fragment by fragment, exactly like sounding out a word you've never read.</p></div>
+    </section>
+
+    <!-- ================= 05 EMBEDDINGS ================= -->
+    <section class="exhibit" id="embeddings">
+      <div class="exhibit-head"><span class="exhibit-eyebrow">Exhibit 05 &middot; often confusing</span><h2>Meaning as Coordinates</h2></div>
+      <p class="dek">Once text is tokens, each token gets converted into a list of numbers — a point in space — called an <b>embedding</b>. Words with related meaning end up near each other. Real embeddings use hundreds of numbers per word; this toy version uses two, so you can see it plotted directly. Click a word, or drag it somewhere new.</p>
+      <div class="panel">
+        <div class="panel-title"><span>Toy embedding space (2 dimensions)</span><span class="mono" id="embedSelected">click a point</span></div>
+        <div class="embed-layout">
+          <div>
+            <div class="embed-legend" id="embedLegend"></div>
+            <div class="canvas-wrap"><canvas id="embedCanvas" width="500" height="440" role="img" aria-label="Scatter plot of words positioned by meaning"></canvas></div>
+          </div>
+          <div>
+            <div class="panel-title" style="margin-bottom:8px;">Nearest neighbors</div>
+            <ul class="neighbor-list" id="neighborList"><li class="muted" style="border:none;">Select a word to compare</li></ul>
+          </div>
+        </div>
+      </div>
+      <div class="callout"><span class="lbl">Why this matters</span><p>Nobody hand-writes these coordinates. A model learns them by reading huge amounts of text and noticing which words tend to appear in similar situations — "cat" and "dog" show up in similar sentences, so they drift close together, entirely on their own.</p></div>
+    </section>
+
+    <!-- ================= 06 ATTENTION ================= -->
+    <section class="exhibit" id="attention">
+      <div class="exhibit-head"><span class="exhibit-eyebrow">Exhibit 06 &middot; the payoff</span><h2>Putting It Together: Attention</h2></div>
+      <p class="dek">This is how the ideas above combine inside something like GPT: tokenize the sentence, look up each token's embedding, then have every token compare itself to every other token to decide what to focus on. Click a word to see where it's looking.</p>
+      <div class="panel">
+        <div class="panel-title"><span>Self-attention (simplified, 4-dimensional teaching model)</span><span></span></div>
+        <input class="token-input" id="attnInput" type="text" value="the cat sat on the mat" aria-label="Sentence for attention demo">
+        <div class="attn-tokens" id="attnTokens"></div>
+        <div class="canvas-wrap"><canvas id="attnCanvas" width="760" height="230" role="img" aria-label="Diagram of attention weights between words"></canvas></div>
+        <ul class="neighbor-list" id="attnList" style="margin-top:10px;"></ul>
+      </div>
+      <div class="callout"><span class="lbl">Reading the picture</span><p>Notice both "the"s get identical embeddings (same word, same fingerprint) but can still end up attending differently, because attention also depends on <em>which other words are nearby</em>. This is a simplified teaching version of the mechanism — a real transformer runs many attention "heads" in parallel across hundreds of dimensions. For a beautifully detailed, real-weights version of this exact idea, see the <a href="https://poloclub.github.io/transformer-explainer/" target="_blank" rel="noopener">Transformer Explainer</a> project, which inspired this exhibit.</p></div>
+    </section>
+
+    <footer>
+      <p><b>Signal &amp; Weight</b> — built as a teaching aid: fork it, project it, or hand students the link and let them break things. Everything on this page runs in your browser; nothing is sent anywhere.</p>
+      <p>Further reading once these seven exhibits feel comfortable: <a href="https://poloclub.github.io/transformer-explainer/" target="_blank" rel="noopener">Transformer Explainer</a> (Polo Club, GA Tech / IBM) for a full-fidelity, real-weights walk through GPT-2.</p>
+    </footer>
+  </main>
+</div>
+<script>
+(function(){
+  "use strict";
+
+  /* ============== theme toggle ============== */
+  var root = document.documentElement;
+  document.querySelectorAll('[data-theme-btn]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var mode = btn.getAttribute('data-theme-btn');
+      document.querySelectorAll('[data-theme-btn]').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      if(mode === 'system'){ root.removeAttribute('data-theme'); }
+      else{ root.setAttribute('data-theme', mode); }
+      try{ localStorage.setItem('saw-theme', mode); }catch(e){}
+    });
+  });
+  try{
+    var saved = localStorage.getItem('saw-theme');
+    if(saved && saved !== 'system'){
+      root.setAttribute('data-theme', saved);
+      document.querySelectorAll('[data-theme-btn]').forEach(function(b){
+        b.classList.toggle('active', b.getAttribute('data-theme-btn') === saved);
+      });
+    }
+  }catch(e){}
+
+  function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  /* ============================================================
+     00. GLOSSARY
+  ============================================================ */
+  var GLOSSARY = [
+    {t:"Artificial Intelligence", c:"Foundations", d:"The broad field of building machines that perform tasks we'd normally say require human intelligence. Machine learning is the main technique used to get there today."},
+    {t:"Machine Learning", c:"Foundations", d:"Teaching a computer to get better at a task by showing it examples, rather than writing explicit step-by-step rules for it."},
+    {t:"Deep Learning", c:"Foundations", d:"Machine learning using neural networks with many stacked layers — the 'deep' refers to the number of layers, not the sophistication."},
+    {t:"Model", c:"Foundations", d:"The thing that's actually doing the predicting once training is done — a set of numbers (parameters) plus the rules for combining them."},
+    {t:"Algorithm", c:"Foundations", d:"The recipe used to train a model — the specific procedure for adjusting its numbers based on data."},
+    {t:"Parameter", c:"Foundations", d:"A number inside the model that gets learned from data, like a weight in a neural network."},
+    {t:"Hyperparameter", c:"Foundations", d:"A setting you choose before training starts — like how many layers to use — as opposed to a parameter, which is learned."},
+    {t:"Dataset", c:"Foundations", d:"The collection of examples used to teach or evaluate a model."},
+    {t:"Feature", c:"Foundations", d:"One measurable input the model uses, e.g. a house's square footage when predicting its price."},
+    {t:"Label", c:"Foundations", d:"The correct answer attached to a training example, e.g. the house's actual sale price."},
+    {t:"Supervised Learning", c:"Training", d:"Training on examples that already have the correct answer attached, so the model can check itself against it."},
+    {t:"Unsupervised Learning", c:"Training", d:"Training on examples with no correct answer given — the model finds structure or groupings on its own."},
+    {t:"Reinforcement Learning", c:"Training", d:"Training by trial and error against a reward signal, the way you'd train a dog with treats — used heavily in game-playing and robotics."},
+    {t:"Training", c:"Training", d:"The process of showing the model examples and adjusting its parameters so its predictions get closer to correct."},
+    {t:"Inference", c:"Training", d:"Using an already-trained model to make a prediction on new data it hasn't seen before."},
+    {t:"Loss Function", c:"Training", d:"A single number measuring how wrong the model currently is. Training is the process of making this number smaller."},
+    {t:"Gradient Descent", c:"Training", d:"The core training algorithm: nudge every parameter slightly in whichever direction reduces the loss the fastest, then repeat — see Exhibit 02."},
+    {t:"Learning Rate", c:"Training", d:"How big a step gradient descent takes each time. Too big overshoots the answer; too small takes forever or gets stuck."},
+    {t:"Epoch", c:"Training", d:"One complete pass through the entire training dataset."},
+    {t:"Batch", c:"Training", d:"A small chunk of the training data processed together before the model's parameters are updated once."},
+    {t:"Overfitting", c:"Training", d:"The model memorizes the exact training examples, including their noise, instead of learning the general pattern — see Exhibit 01."},
+    {t:"Underfitting", c:"Training", d:"The model is too simple to capture the pattern at all, so it performs poorly even on the data it trained on."},
+    {t:"Bias", c:"Training", d:"Statistically: systematic error from an overly simple model. Ethically: a model reproducing unfair patterns present in its training data — a different, equally important meaning of the same word."},
+    {t:"Variance", c:"Training", d:"How much a model's predictions would change if it were trained on a slightly different sample of data. High variance is a symptom of overfitting."},
+    {t:"Validation Set", c:"Training", d:"Data held back from training, used to tune hyperparameters and check for overfitting along the way."},
+    {t:"Test Set", c:"Training", d:"Data held back and touched only once, at the very end, to report how the finished model performs on truly unseen examples."},
+    {t:"Classification", c:"Training", d:"Predicting which category something belongs to, e.g. 'spam' or 'not spam'."},
+    {t:"Regression", c:"Training", d:"Predicting a number, e.g. a house price or tomorrow's temperature."},
+    {t:"Accuracy", c:"Evaluation", d:"The percentage of predictions the model got exactly right — simple, but misleading when one category is rare."},
+    {t:"Precision", c:"Evaluation", d:"Of everything the model flagged as positive, what fraction actually was — matters when false alarms are costly."},
+    {t:"Recall", c:"Evaluation", d:"Of everything that was actually positive, what fraction the model caught — matters when missing a case is costly."},
+    {t:"Confusion Matrix", c:"Evaluation", d:"A table comparing what the model predicted against what was actually true, broken down by category."},
+    {t:"Neural Network", c:"Neural Networks", d:"A model made of layers of simple units ('neurons') connected by weights, loosely inspired by how brain cells connect — see Exhibit 03."},
+    {t:"Neuron", c:"Neural Networks", d:"A single unit that multiplies its inputs by weights, sums them, and passes the result through an activation function."},
+    {t:"Weight", c:"Neural Networks", d:"A number attached to a connection between two neurons, controlling how strongly one influences the other. This is the main thing training adjusts."},
+    {t:"Activation Function", c:"Neural Networks", d:"A small function applied to a neuron's sum that lets networks learn curved, non-obvious patterns instead of only straight lines."},
+    {t:"Backpropagation", c:"Neural Networks", d:"The method for calculating exactly how much each weight contributed to the model's error, so gradient descent knows which way to nudge it."},
+    {t:"Convolutional Neural Network", c:"Neural Networks", d:"A network architecture specialized for grid-like data such as images, scanning small patches at a time to detect edges, shapes, and textures."},
+    {t:"Token", c:"Language & Transformers", d:"A chunk of text — a word, part of a word, or punctuation mark — that a language model treats as one unit. See Exhibit 04."},
+    {t:"Embedding", c:"Language & Transformers", d:"A list of numbers representing a token's meaning as a point in space, learned so related meanings end up near each other. See Exhibit 05."},
+    {t:"Vector", c:"Language & Transformers", d:"Just a list of numbers, like [0.2, -1.4, 0.9]. Embeddings are vectors; so are a neuron's inputs and weights."},
+    {t:"Attention", c:"Language & Transformers", d:"The mechanism that lets each token look at every other token and decide which ones are most relevant to understanding it. See Exhibit 06."},
+    {t:"Transformer", c:"Language & Transformers", d:"The neural network architecture built around attention that powers nearly every modern language model."},
+    {t:"Large Language Model", c:"Language & Transformers", d:"A transformer trained on enormous amounts of text to predict the next token, which turns out to be enough to make it useful for writing, answering, and reasoning."},
+    {t:"Fine-tuning", c:"Language & Transformers", d:"Taking an already-trained model and continuing to train it a little further on a smaller, more specific dataset."},
+    {t:"Prompt", c:"Language & Transformers", d:"The text you give a language model as input, which it continues or responds to."},
+    {t:"Natural Language Processing", c:"Language & Transformers", d:"The broader field of getting computers to work with human language, of which today's language models are the current state of the art."},
+    {t:"Generalization", c:"Training", d:"A model's ability to perform well on new examples it never trained on — the entire point of training in the first place."}
+  ];
+  (function initGlossary(){
+    var grid = document.getElementById('glossGrid');
+    var filtersEl = document.getElementById('glossFilters');
+    var search = document.getElementById('glossSearch');
+    var empty = document.getElementById('glossEmpty');
+    var cats = ["All"].concat(Array.from(new Set(GLOSSARY.map(function(g){return g.c;}))));
+    var activeCat = "All";
+
+    cats.forEach(function(c){
+      var b = document.createElement('button');
+      b.textContent = c;
+      if(c === "All") b.classList.add('active');
+      b.addEventListener('click', function(){
+        activeCat = c;
+        Array.from(filtersEl.children).forEach(function(x){ x.classList.remove('active'); });
+        b.classList.add('active');
+        render();
+      });
+      filtersEl.appendChild(b);
+    });
+
+    function render(){
+      var q = search.value.trim().toLowerCase();
+      grid.innerHTML = '';
+      var shown = 0;
+      GLOSSARY.forEach(function(g){
+        if(activeCat !== "All" && g.c !== activeCat) return;
+        if(q && g.t.toLowerCase().indexOf(q) === -1 && g.d.toLowerCase().indexOf(q) === -1) return;
+        shown++;
+        var card = document.createElement('div');
+        card.className = 'flip-card';
+        card.tabIndex = 0;
+        card.setAttribute('role','button');
+        card.setAttribute('aria-label', 'Flip card for ' + g.t);
+        card.innerHTML =
+          '<div class="flip-inner">' +
+            '<div class="flip-face front"><span class="tag">' + g.c + '</span><span class="term">' + g.t + '</span><span class="hint">click to flip &rarr;</span></div>' +
+            '<div class="flip-face back"><span class="tag">' + g.c + '</span><span class="def">' + g.d + '</span></div>' +
+          '</div>';
+        function flip(){ card.classList.toggle('flipped'); }
+        card.addEventListener('click', flip);
+        card.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); flip(); } });
+        grid.appendChild(card);
+      });
+      empty.style.display = shown === 0 ? 'block' : 'none';
+    }
+    search.addEventListener('input', render);
+    render();
+  })();
+
+  /* ============================================================
+     01. OVERFIT / UNDERFIT PLAYGROUND
+  ============================================================ */
+  (function initFit(){
+    var canvas = document.getElementById('fitCanvas');
+    var ctx = canvas.getContext('2d');
+    var degSlider = document.getElementById('degSlider');
+    var degLabel = document.getElementById('degLabel');
+    var degVal = document.getElementById('degVal');
+    var trainErrEl = document.getElementById('trainErr');
+    var testErrEl = document.getElementById('testErr');
+    var verdictEl = document.getElementById('fitVerdict');
+    var regenBtn = document.getElementById('fitRegen');
+
+    var trainPts = [], testPts = [];
+
+    function trueFn(x){ return Math.sin(Math.PI * x) * 0.9; }
+    function genData(){
+      trainPts = []; testPts = [];
+      for(var i=0;i<18;i++){
+        var x = -1 + Math.random()*2;
+        var y = trueFn(x) + (Math.random()-0.5) * 0.55;
+        trainPts.push([x,y]);
+      }
+      for(var j=0;j<24;j++){
+        var xt = -1 + Math.random()*2;
+        var yt = trueFn(xt) + (Math.random()-0.5) * 0.55;
+        testPts.push([xt,yt]);
+      }
+    }
+
+    function polyFit(pts, degree){
+      var n = degree + 1;
+      var A = []; for(var r=0;r<n;r++){ A.push(new Array(n+1).fill(0)); }
+      pts.forEach(function(p){
+        var x = p[0], y = p[1];
+        var powers = [1];
+        for(var k=1;k<=2*degree;k++) powers.push(powers[k-1]*x);
+        for(var i2=0;i2<n;i2++){
+          for(var j2=0;j2<n;j2++) A[i2][j2] += powers[i2+j2];
+          A[i2][n] += powers[i2]*y;
+        }
+      });
+      // Gaussian elimination with partial pivoting
+      for(var col=0; col<n; col++){
+        var piv = col;
+        for(var r2=col+1;r2<n;r2++) if(Math.abs(A[r2][col]) > Math.abs(A[piv][col])) piv = r2;
+        var tmp = A[col]; A[col] = A[piv]; A[piv] = tmp;
+        if(Math.abs(A[col][col]) < 1e-10) A[col][col] = 1e-10;
+        for(var r3=0;r3<n;r3++){
+          if(r3===col) continue;
+          var factor = A[r3][col]/A[col][col];
+          for(var c3=col;c3<=n;c3++) A[r3][c3] -= factor*A[col][c3];
+        }
+      }
+      var coeffs = [];
+      for(var i3=0;i3<n;i3++) coeffs.push(A[i3][n]/A[i3][i3]);
+      return coeffs; // coeffs[k] is multiplier for x^k
+    }
+    function evalPoly(coeffs, x){
+      var y = 0, p = 1;
+      for(var k=0;k<coeffs.length;k++){ y += coeffs[k]*p; p *= x; }
+      return y;
+    }
+    function mse(pts, coeffs){
+      var s = 0;
+      pts.forEach(function(p){ var e = evalPoly(coeffs,p[0]) - p[1]; s += e*e; });
+      return s / pts.length;
+    }
+
+    function draw(){
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      var pad = 40;
+      function toPx(x){ return pad + (x+1.15)/2.3 * (W-2*pad); }
+      function toPy(y){ return H-pad - (y+1.6)/3.2 * (H-2*pad); }
+
+      ctx.strokeStyle = cssVar('--hair'); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(pad, toPy(0)); ctx.lineTo(W-pad, toPy(0)); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(toPx(0), pad); ctx.lineTo(toPx(0), H-pad); ctx.stroke();
+
+      var degree = parseInt(degSlider.value,10);
+      var coeffs = polyFit(trainPts, degree);
+
+      ctx.strokeStyle = cssVar('--accent'); ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for(var i=0;i<=200;i++){
+        var x = -1.1 + (i/200)*2.2;
+        var y = evalPoly(coeffs, x);
+        y = Math.max(-1.7, Math.min(1.7, y));
+        var px = toPx(x), py = toPy(y);
+        if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+      }
+      ctx.stroke();
+
+      trainPts.forEach(function(p){
+        ctx.beginPath(); ctx.arc(toPx(p[0]), toPy(p[1]), 4.5, 0, Math.PI*2);
+        ctx.fillStyle = cssVar('--ink'); ctx.fill();
+      });
+      testPts.forEach(function(p){
+        ctx.beginPath(); ctx.arc(toPx(p[0]), toPy(p[1]), 3.5, 0, Math.PI*2);
+        ctx.strokeStyle = cssVar('--accent2'); ctx.lineWidth = 1.5; ctx.stroke();
+      });
+
+      var trErr = mse(trainPts, coeffs), teErr = mse(testPts, coeffs);
+      trainErrEl.textContent = trErr.toFixed(3);
+      testErrEl.textContent = teErr.toFixed(3);
+      testErrEl.className = 'v mono ' + (teErr > trErr*1.6 ? 'neg' : 'pos');
+      var verdict = 'Reasonable fit';
+      if(degree <= 2 && trErr > 0.15) verdict = 'Underfitting — too simple';
+      else if(teErr > trErr*2.2 && degree >= 6) verdict = 'Overfitting — memorizing noise';
+      verdictEl.textContent = verdict;
+      degLabel.textContent = degree; degVal.textContent = degree;
+    }
+
+    degSlider.addEventListener('input', draw);
+    regenBtn.addEventListener('click', function(){ genData(); draw(); });
+    genData(); draw();
+    window.addEventListener('resize', draw);
+  })();
+
+  /* ============================================================
+     02. GRADIENT DESCENT PLAYGROUND
+  ============================================================ */
+  (function initDescent(){
+    var canvas = document.getElementById('descentCanvas');
+    var ctx = canvas.getContext('2d');
+    var lrSlider = document.getElementById('lrSlider');
+    var lrVal = document.getElementById('lrVal');
+    var stepBtn = document.getElementById('stepBtn');
+    var runBtn = document.getElementById('runBtn');
+    var resetBtn = document.getElementById('descentReset');
+    var stepCountEl = document.getElementById('stepCount');
+    var ballXEl = document.getElementById('ballX');
+    var ballYEl = document.getElementById('ballY');
+    var ballSlopeEl = document.getElementById('ballSlope');
+
+    var xMin=-3, xMax=3;
+    function f(x){ return 0.15*Math.pow(x,4) - 0.9*x*x - 0.1*x + 5; }
+    function fp(x){ return 0.6*Math.pow(x,3) - 1.8*x - 0.1; }
+
+    var ballX = -2.6, trail = [], steps = 0, running = false;
+
+    function lr(){ return parseInt(lrSlider.value,10)/1000; }
+    lrSlider.addEventListener('input', function(){ lrVal.textContent = lr().toFixed(3); });
+
+    function toPx(x, W, pad){ return pad + (x-xMin)/(xMax-xMin) * (W-2*pad); }
+    function toPy(y, H, pad, yMin, yMax){ return H-pad - (y-yMin)/(yMax-yMin) * (H-2*pad); }
+
+    function draw(){
+      var W = canvas.width, H = canvas.height, pad = 36;
+      var yMin=1.5, yMax=8.5;
+      ctx.clearRect(0,0,W,H);
+
+      ctx.strokeStyle = cssVar('--accent2'); ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for(var i=0;i<=200;i++){
+        var x = xMin + (i/200)*(xMax-xMin);
+        var y = f(x);
+        var px = toPx(x,W,pad), py = toPy(y,H,pad,yMin,yMax);
+        if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+      }
+      ctx.stroke();
+
+      trail.forEach(function(tx, idx){
+        var alpha = (idx+1)/trail.length * 0.5;
+        ctx.beginPath();
+        ctx.arc(toPx(tx,W,pad), toPy(f(tx),H,pad,yMin,yMax), 4, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(184,121,30,' + alpha.toFixed(2) + ')';
+        ctx.fill();
+      });
+
+      ctx.beginPath();
+      ctx.arc(toPx(ballX,W,pad), toPy(f(ballX),H,pad,yMin,yMax), 8, 0, Math.PI*2);
+      ctx.fillStyle = cssVar('--accent'); ctx.fill();
+      ctx.strokeStyle = cssVar('--ink'); ctx.lineWidth = 1.5; ctx.stroke();
+
+      ballXEl.textContent = ballX.toFixed(2);
+      ballYEl.textContent = f(ballX).toFixed(2);
+      ballSlopeEl.textContent = fp(ballX).toFixed(2);
+      stepCountEl.textContent = steps + (steps===1 ? ' step' : ' steps');
+    }
+
+    function doStep(){
+      var grad = fp(ballX);
+      trail.push(ballX);
+      if(trail.length > 40) trail.shift();
+      ballX = ballX - lr()*grad*8;
+      ballX = Math.max(xMin+0.05, Math.min(xMax-0.05, ballX));
+      steps++;
+      draw();
+    }
+
+    canvas.addEventListener('click', function(e){
+      var rect = canvas.getBoundingClientRect();
+      var scaleX = canvas.width/rect.width;
+      var mx = (e.clientX-rect.left)*scaleX;
+      var pad = 36, W = canvas.width;
+      var x = xMin + (mx-pad)/(W-2*pad)*(xMax-xMin);
+      ballX = Math.max(xMin+0.05, Math.min(xMax-0.05, x));
+      trail = []; steps = 0; running = false;
+      draw();
+    });
+    stepBtn.addEventListener('click', function(){ running=false; doStep(); });
+    resetBtn.addEventListener('click', function(){ ballX=-2.6; trail=[]; steps=0; running=false; draw(); });
+    runBtn.addEventListener('click', function(){
+      running = true;
+      var lastGrad = null, sameSignCount = 0;
+      function loop(){
+        if(!running) return;
+        var before = ballX;
+        doStep();
+        if(Math.abs(ballX-before) < 0.0009 || steps > 250){ running = false; return; }
+        requestAnimationFrame(function(){ setTimeout(loop, 16); });
+      }
+      loop();
+    });
+
+    lrVal.textContent = lr().toFixed(3);
+    draw();
+  })();
+
+  /* ============================================================
+     03. NEURON / NETWORK PLAYGROUND
+  ============================================================ */
+  (function initNet(){
+    var svg = document.getElementById('netSvg');
+    var x1Slider = document.getElementById('x1Slider'), x2Slider = document.getElementById('x2Slider');
+    var x1Val = document.getElementById('x1Val'), x2Val = document.getElementById('x2Val');
+    var actSelect = document.getElementById('actSelect');
+    var netOutEl = document.getElementById('netOut');
+    var netFormula = document.getElementById('netFormula');
+    var regenBtn = document.getElementById('netRegen');
+
+    var NS = "http://www.w3.org/2000/svg";
+    var W = 760, H = 420;
+    var layerX = [90, 340, 590, 690];
+    var inputY = [130, 290];
+    var hiddenY = [70, 210, 350];
+    var outputY = [210];
+
+    var w1 = [], w2 = [], bias1 = [0.1,-0.1,0.05], w3 = [], bias2 = 0.0;
+    function randomWeights(){
+      w1 = [rnd(),rnd(),rnd()];
+      w2 = [rnd(),rnd(),rnd()];
+      w3 = [rnd(),rnd(),rnd()];
+      bias1 = [rnd()*0.4, rnd()*0.4, rnd()*0.4];
+      bias2 = rnd()*0.3;
+    }
+    function rnd(){ return (Math.random()*2-1); }
+
+    function act(name, z){
+      if(name==='sigmoid') return 1/(1+Math.exp(-z));
+      if(name==='tanh') return Math.tanh(z);
+      return Math.max(0,z); // relu
+    }
+
+    var nodesG, edgesG, labelsG;
+    function buildStatic(){
+      svg.innerHTML = '';
+      edgesG = document.createElementNS(NS,'g');
+      nodesG = document.createElementNS(NS,'g');
+      labelsG = document.createElementNS(NS,'g');
+      svg.appendChild(edgesG); svg.appendChild(nodesG); svg.appendChild(labelsG);
+    }
+
+    function circle(cx,cy,r,fill,stroke){
+      var c = document.createElementNS(NS,'circle');
+      c.setAttribute('cx',cx); c.setAttribute('cy',cy); c.setAttribute('r',r);
+      c.setAttribute('fill',fill); c.setAttribute('stroke', stroke||cssVar('--ink')); c.setAttribute('stroke-width','1.5');
+      return c;
+    }
+    function text(x,y,str,size,color,anchor){
+      var t = document.createElementNS(NS,'text');
+      t.setAttribute('x',x); t.setAttribute('y',y);
+      t.setAttribute('font-family', "IBM Plex Mono, monospace");
+      t.setAttribute('font-size', size||11);
+      t.setAttribute('fill', color||cssVar('--muted'));
+      t.setAttribute('text-anchor', anchor||'middle');
+      t.textContent = str;
+      return t;
+    }
+    function edgeLine(x1,y1,x2,y2,weight, dragHandler){
+      var g = document.createElementNS(NS,'g');
+      var w = Math.min(8, 1 + Math.abs(weight)*6);
+      var color = weight >= 0 ? cssVar('--pos') : cssVar('--neg');
+      var line = document.createElementNS(NS,'line');
+      line.setAttribute('x1',x1); line.setAttribute('y1',y1); line.setAttribute('x2',x2); line.setAttribute('y2',y2);
+      line.setAttribute('stroke', color); line.setAttribute('stroke-width', w); line.setAttribute('stroke-linecap','round');
+      line.setAttribute('opacity', '0.85');
+      var hit = document.createElementNS(NS,'line');
+      hit.setAttribute('x1',x1); hit.setAttribute('y1',y1); hit.setAttribute('x2',x2); hit.setAttribute('y2',y2);
+      hit.setAttribute('stroke','transparent'); hit.setAttribute('stroke-width','16'); hit.style.cursor='ns-resize';
+      g.appendChild(line); g.appendChild(hit);
+      hit.addEventListener('pointerdown', function(e){
+        // Capture on the persistent <svg>, not on this <line> -- render() tears
+        // down and rebuilds every edge each frame, and a captured element
+        // silently loses capture the instant it's removed from the DOM.
+        svg.setPointerCapture(e.pointerId);
+        var startY = e.clientY;
+        function move(ev){
+          var rect = svg.getBoundingClientRect();
+          var scale = H/rect.height;
+          var dy = (startY-ev.clientY)*scale;
+          dragHandler(dy/60);
+          startY = ev.clientY;
+        }
+        function up(){ svg.removeEventListener('pointermove', move); svg.removeEventListener('pointerup', up); }
+        svg.addEventListener('pointermove', move);
+        svg.addEventListener('pointerup', up);
+      });
+      return {g:g, line:line};
+    }
+
+    function render(){
+      buildStatic();
+      var x1 = parseInt(x1Slider.value,10)/100;
+      var x2 = parseInt(x2Slider.value,10)/100;
+      var actName = actSelect.value;
+      x1Val.textContent = x1.toFixed(2); x2Val.textContent = x2.toFixed(2);
+      netFormula.textContent = 'activation: ' + actName;
+
+      var hidden = [0,0,0];
+      for(var h=0; h<3; h++){
+        var z = x1*w1[h] + x2*w2[h] + bias1[h];
+        hidden[h] = act(actName, z);
+      }
+      var outZ = hidden[0]*w3[0] + hidden[1]*w3[1] + hidden[2]*w3[2] + bias2;
+      var out = act(actName, outZ);
+      netOutEl.textContent = out.toFixed(3);
+
+      // edges input->hidden
+      for(h=0; h<3; h++){
+        (function(h){
+          var e1 = edgeLine(layerX[0], inputY[0], layerX[1], hiddenY[h], w1[h], function(delta){ w1[h] = Math.max(-1.5,Math.min(1.5,w1[h]+delta)); render(); });
+          edgesG.appendChild(e1.g);
+          var e2 = edgeLine(layerX[0], inputY[1], layerX[1], hiddenY[h], w2[h], function(delta){ w2[h] = Math.max(-1.5,Math.min(1.5,w2[h]+delta)); render(); });
+          edgesG.appendChild(e2.g);
+          var e3 = edgeLine(layerX[1], hiddenY[h], layerX[2], outputY[0], w3[h], function(delta){ w3[h] = Math.max(-1.5,Math.min(1.5,w3[h]+delta)); render(); });
+          edgesG.appendChild(e3.g);
+        })(h);
+      }
+
+      // input nodes
+      [x1,x2].forEach(function(v,i){
+        var intensity = Math.min(1, Math.abs(v));
+        nodesG.appendChild(circle(layerX[0], inputY[i], 22, mixColor(intensity)));
+        labelsG.appendChild(text(layerX[0], inputY[i]+4, v.toFixed(2), 12, '#1B2430'));
+        labelsG.appendChild(text(layerX[0], inputY[i]-32, 'x'+(i+1), 12, cssVar('--muted')));
+      });
+      // hidden nodes
+      hidden.forEach(function(v,i){
+        nodesG.appendChild(circle(layerX[1], hiddenY[i], 24, mixColor(v)));
+        labelsG.appendChild(text(layerX[1], hiddenY[i]+4, v.toFixed(2), 12, '#1B2430'));
+      });
+      // output node
+      nodesG.appendChild(circle(layerX[2], outputY[0], 26, mixColor(out)));
+      labelsG.appendChild(text(layerX[2], outputY[0]+4, out.toFixed(2), 12, '#1B2430'));
+      labelsG.appendChild(text(layerX[2]+70, outputY[0]+4, 'output', 12, cssVar('--muted'), 'start'));
+      labelsG.appendChild(text(layerX[1], 20, 'hidden layer', 11, cssVar('--muted')));
+      labelsG.appendChild(text(layerX[0], 20, 'inputs', 11, cssVar('--muted')));
+    }
+    function mixColor(t){
+      t = Math.max(0, Math.min(1, t));
+      var accent = getComputedStyle(document.documentElement).getPropertyValue('--accent-soft').trim();
+      var full = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+      return t > 0.5 ? full : accent;
+    }
+
+    x1Slider.addEventListener('input', render);
+    x2Slider.addEventListener('input', render);
+    actSelect.addEventListener('change', render);
+    regenBtn.addEventListener('click', function(){ randomWeights(); render(); });
+    randomWeights(); render();
+  })();
+
+  /* ============================================================
+     04. TOKENIZER PLAYGROUND
+  ============================================================ */
+  var CHIP_PALETTE = ['#F0DCB4','#D9E6E4','#E7D6E8','#D6E4F0','#F0D9D0','#DDEBD0','#EBE3C8','#D8E8E0'];
+  var SUBWORD_PIECES = ["anti","dis","un","re","pre","non","over","under","out","ing","tion","sion","ment","ness","ful","less","able","ible","ist","ism","ity","ous","ive","al","ic","ed","er","est","ly","s","tastic","ology","arian"];
+
+  function tokenizeWord(word){
+    var m = word.match(/^([a-zA-Z]+)([^a-zA-Z]*)$/);
+    var core = m ? m[1] : word;
+    var trail = m ? m[2] : '';
+    var pieces = [];
+    var lower = core.toLowerCase();
+    var remaining = lower;
+    var guard = 0;
+    while(remaining.length > 0 && guard < 20){
+      guard++;
+      if(remaining.length <= 4){ pieces.push(remaining); break; }
+      var matched = null;
+      for(var i=0;i<SUBWORD_PIECES.length;i++){
+        var piece = SUBWORD_PIECES[i];
+        if(remaining.indexOf(piece) === 0 && piece.length < remaining.length){ matched = piece; break; }
+      }
+      if(!matched){
+        for(var j=0;j<SUBWORD_PIECES.length;j++){
+          var p2 = SUBWORD_PIECES[j];
+          if(remaining.length - p2.length >= 2 && remaining.slice(-p2.length) === p2){ matched = {suffix:p2}; break; }
+        }
+      }
+      if(matched && matched.suffix){
+        pieces.push('##'+matched.suffix);
+        remaining = remaining.slice(0, remaining.length-matched.suffix.length);
+      } else if(matched){
+        pieces.push(matched);
+        remaining = remaining.slice(matched.length);
+      } else {
+        pieces.push(remaining.slice(0,4));
+        remaining = remaining.slice(4);
+      }
+    }
+    pieces.reverse();
+    var out = [];
+    for(var k=0;k<pieces.length;k++){
+      out.push(k===0 ? pieces[k] : '##'+pieces[k].replace('##',''));
+    }
+    if(trail) out.push(trail);
+    return out;
+  }
+
+  (function initTokenizer(){
+    var input = document.getElementById('tokenInput');
+    var chipsEl = document.getElementById('tokenChips');
+    var countEl = document.getElementById('tokCount');
+    var uniqueEl = document.getElementById('tokUnique');
+    var ratioEl = document.getElementById('tokRatio');
+    var mode = 'word';
+    var vocab = {};
+
+    document.querySelectorAll('[data-tok-mode]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        mode = btn.getAttribute('data-tok-mode');
+        document.querySelectorAll('[data-tok-mode]').forEach(function(b){ b.classList.remove('active'); });
+        btn.classList.add('active');
+        render();
+      });
+    });
+
+    function getTokenId(str){
+      if(!(str in vocab)) vocab[str] = Object.keys(vocab).length;
+      return vocab[str];
+    }
+
+    function render(){
+      var text = input.value;
+      var words = text.split(/(\s+)/).filter(function(w){ return w.trim().length>0; });
+      var tokens = [];
+      words.forEach(function(w){
+        if(mode === 'word'){ tokens.push(w); }
+        else { tokenizeWord(w).forEach(function(p){ tokens.push(p); }); }
+      });
+      chipsEl.innerHTML = '';
+      var seen = {};
+      tokens.forEach(function(tok){
+        var id = getTokenId(tok);
+        seen[tok] = true;
+        var chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.style.background = CHIP_PALETTE[id % CHIP_PALETTE.length];
+        chip.innerHTML = escapeHtml(tok) + '<span class="id">#' + id + '</span>';
+        chipsEl.appendChild(chip);
+      });
+      countEl.textContent = tokens.length;
+      uniqueEl.textContent = Object.keys(seen).length;
+      var totalChars = text.replace(/\s+/g,'').length;
+      ratioEl.textContent = tokens.length ? (totalChars/tokens.length).toFixed(1) : '–';
+    }
+    function escapeHtml(s){ var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+    input.addEventListener('input', render);
+    render();
+  })();
+
+  /* ============================================================
+     05. EMBEDDING SPACE PLAYGROUND
+  ============================================================ */
+  var EMBED_WORDS = [
+    {w:"cat", cat:"Animals", x:0.72, y:0.62}, {w:"dog", cat:"Animals", x:0.78, y:0.55},
+    {w:"lion", cat:"Animals", x:0.62, y:0.70}, {w:"wolf", cat:"Animals", x:0.70, y:0.72},
+    {w:"kitten", cat:"Animals", x:0.80, y:0.68}, {w:"puppy", cat:"Animals", x:0.84, y:0.60},
+    {w:"eagle", cat:"Animals", x:0.55, y:0.50}, {w:"shark", cat:"Animals", x:0.60, y:0.40},
+    {w:"pizza", cat:"Food", x:0.15, y:0.25}, {w:"pasta", cat:"Food", x:0.20, y:0.30},
+    {w:"burger", cat:"Food", x:0.10, y:0.32}, {w:"sushi", cat:"Food", x:0.25, y:0.20},
+    {w:"apple", cat:"Food", x:0.28, y:0.15}, {w:"bread", cat:"Food", x:0.18, y:0.18},
+    {w:"coffee", cat:"Food", x:0.05, y:0.20}, {w:"cake", cat:"Food", x:0.22, y:0.35},
+    {w:"happy", cat:"Emotions", x:0.55, y:0.10}, {w:"joyful", cat:"Emotions", x:0.60, y:0.06},
+    {w:"sad", cat:"Emotions", x:0.68, y:0.18}, {w:"angry", cat:"Emotions", x:0.78, y:0.15},
+    {w:"anxious", cat:"Emotions", x:0.72, y:0.22}, {w:"calm", cat:"Emotions", x:0.50, y:0.16},
+    {w:"excited", cat:"Emotions", x:0.58, y:0.02}, {w:"proud", cat:"Emotions", x:0.48, y:0.08},
+    {w:"computer", cat:"Tech", x:0.90, y:0.20}, {w:"laptop", cat:"Tech", x:0.94, y:0.24},
+    {w:"software", cat:"Tech", x:0.86, y:0.14}, {w:"internet", cat:"Tech", x:0.92, y:0.10},
+    {w:"robot", cat:"Tech", x:0.80, y:0.08}, {w:"algorithm", cat:"Tech", x:0.88, y:0.06},
+    {w:"phone", cat:"Tech", x:0.96, y:0.30}, {w:"data", cat:"Tech", x:0.82, y:0.02},
+    {w:"rain", cat:"Weather", x:0.30, y:0.85}, {w:"storm", cat:"Weather", x:0.24, y:0.90},
+    {w:"sunny", cat:"Weather", x:0.42, y:0.80}, {w:"snow", cat:"Weather", x:0.28, y:0.95},
+    {w:"cloudy", cat:"Weather", x:0.36, y:0.88}, {w:"wind", cat:"Weather", x:0.20, y:0.82},
+    {w:"soccer", cat:"Sports", x:0.55, y:0.92}, {w:"tennis", cat:"Sports", x:0.62, y:0.85},
+    {w:"marathon", cat:"Sports", x:0.48, y:0.96}, {w:"swimming", cat:"Sports", x:0.68, y:0.90},
+    {w:"basketball", cat:"Sports", x:0.58, y:0.98}, {w:"cycling", cat:"Sports", x:0.44, y:0.90}
+  ];
+  var CAT_COLORS = { Animals:"#B8791E", Food:"#A8482F", Emotions:"#7A5FB8", Tech:"#2E6367", Weather:"#3E6FB8", Sports:"#5B8A3A" };
+
+  (function initEmbed(){
+    var canvas = document.getElementById('embedCanvas');
+    var ctx = canvas.getContext('2d');
+    var legend = document.getElementById('embedLegend');
+    var neighborList = document.getElementById('neighborList');
+    var selectedEl = document.getElementById('embedSelected');
+    var activeCats = {};
+    Object.keys(CAT_COLORS).forEach(function(c){ activeCats[c] = true; });
+    var selected = null, dragging = null;
+    var pad = 26;
+
+    Object.keys(CAT_COLORS).forEach(function(cat){
+      var pill = document.createElement('div');
+      pill.className = 'legend-pill';
+      pill.innerHTML = '<span class="dot" style="background:'+CAT_COLORS[cat]+'"></span>' + cat;
+      pill.addEventListener('click', function(){
+        activeCats[cat] = !activeCats[cat];
+        pill.classList.toggle('off', !activeCats[cat]);
+        draw();
+      });
+      legend.appendChild(pill);
+    });
+
+    function toPx(pt){ return { x: pad + pt.x*(canvas.width-2*pad), y: pad + pt.y*(canvas.height-2*pad) }; }
+
+    function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+
+    function draw(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.strokeStyle = cssVar('--hair'); ctx.lineWidth = 1;
+      ctx.strokeRect(pad,pad,canvas.width-2*pad,canvas.height-2*pad);
+
+      if(selected){
+        var s = toPx(selected);
+        var neighbors = EMBED_WORDS.filter(function(w){ return w!==selected && activeCats[w.cat]; })
+          .map(function(w){ return {w:w, d:dist(w,selected)}; })
+          .sort(function(a,b){ return a.d-b.d; }).slice(0,5);
+        neighbors.forEach(function(n){
+          var p = toPx(n.w);
+          ctx.beginPath(); ctx.moveTo(s.x,s.y); ctx.lineTo(p.x,p.y);
+          ctx.strokeStyle = cssVar('--accent2'); ctx.lineWidth = 1;
+          ctx.globalAlpha = 0.5;
+          ctx.stroke(); ctx.globalAlpha = 1;
+        });
+      }
+
+      EMBED_WORDS.forEach(function(w){
+        if(!activeCats[w.cat]) return;
+        var p = toPx(w);
+        var isSel = w === selected;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, isSel ? 7 : 5, 0, Math.PI*2);
+        ctx.fillStyle = CAT_COLORS[w.cat];
+        ctx.globalAlpha = isSel ? 1 : 0.85;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        if(isSel){ ctx.strokeStyle = cssVar('--ink'); ctx.lineWidth = 2; ctx.stroke(); }
+        ctx.fillStyle = cssVar('--ink');
+        ctx.font = (isSel? '600 ' : '400 ') + '12px IBM Plex Sans, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(w.w, p.x+9, p.y+4);
+      });
+
+      renderNeighborList();
+    }
+
+    function renderNeighborList(){
+      if(!selected){ neighborList.innerHTML = '<li class="muted" style="border:none;">Select a word to compare</li>'; selectedEl.textContent='click a point'; return; }
+      selectedEl.textContent = '"' + selected.w + '"';
+      var maxD = Math.hypot(1,1);
+      var neighbors = EMBED_WORDS.filter(function(w){ return w!==selected && activeCats[w.cat]; })
+        .map(function(w){ return {w:w, d:dist(w,selected)}; })
+        .sort(function(a,b){ return a.d-b.d; }).slice(0,6);
+      neighborList.innerHTML = neighbors.map(function(n){
+        var closeness = Math.round((1 - n.d/maxD)*100);
+        return '<li><div><b>'+n.w.w+'</b><div class="bar" style="width:'+closeness+'%"></div></div><span>'+closeness+'</span></li>';
+      }).join('');
+    }
+
+    function hit(px, py){
+      for(var i=0;i<EMBED_WORDS.length;i++){
+        var w = EMBED_WORDS[i];
+        if(!activeCats[w.cat]) continue;
+        var p = toPx(w);
+        if(Math.hypot(p.x-px,p.y-py) < 10) return w;
+      }
+      return null;
+    }
+
+    function evtPos(e){
+      var rect = canvas.getBoundingClientRect();
+      var scaleX = canvas.width/rect.width, scaleY = canvas.height/rect.height;
+      return { x:(e.clientX-rect.left)*scaleX, y:(e.clientY-rect.top)*scaleY };
+    }
+
+    canvas.addEventListener('pointerdown', function(e){
+      var pos = evtPos(e);
+      var w = hit(pos.x,pos.y);
+      if(w){ selected = w; dragging = w; canvas.setPointerCapture(e.pointerId); draw(); }
+    });
+    canvas.addEventListener('pointermove', function(e){
+      if(!dragging) return;
+      var pos = evtPos(e);
+      dragging.x = Math.max(0,Math.min(1,(pos.x-pad)/(canvas.width-2*pad)));
+      dragging.y = Math.max(0,Math.min(1,(pos.y-pad)/(canvas.height-2*pad)));
+      draw();
+    });
+    canvas.addEventListener('pointerup', function(){ dragging = null; });
+
+    draw();
+  })();
+
+  /* ============================================================
+     06. ATTENTION PLAYGROUND
+  ============================================================ */
+  (function initAttention(){
+    var input = document.getElementById('attnInput');
+    var tokensEl = document.getElementById('attnTokens');
+    var canvas = document.getElementById('attnCanvas');
+    var ctx = canvas.getContext('2d');
+    var listEl = document.getElementById('attnList');
+    var activeIdx = null;
+
+    function hashVec(word, dims){
+      var v = [];
+      var seed = 0;
+      for(var i=0;i<word.length;i++) seed = (seed*31 + word.charCodeAt(i)) >>> 0;
+      for(var d=0; d<dims; d++){
+        seed = (seed*1103515245 + 12345 + d*97) >>> 0;
+        v.push(((seed % 2000)/1000) - 1);
+      }
+      return v;
+    }
+    function dot(a,b){ var s=0; for(var i=0;i<a.length;i++) s+=a[i]*b[i]; return s; }
+    function softmax(arr){
+      var m = Math.max.apply(null, arr);
+      var ex = arr.map(function(v){ return Math.exp(v-m); });
+      var sum = ex.reduce(function(a,b){return a+b;},0);
+      return ex.map(function(v){ return v/sum; });
+    }
+
+    function compute(){
+      var text = input.value.trim();
+      var words = text.split(/\s+/).filter(Boolean);
+      var vecs = words.map(function(w){ return hashVec(w.toLowerCase(), 4); });
+      var d = 4;
+      var weights = words.map(function(_, i){
+        var scores = words.map(function(_, j){ return dot(vecs[i], vecs[j]) / Math.sqrt(d); });
+        return softmax(scores);
+      });
+      return { words: words, vecs: vecs, weights: weights };
+    }
+
+    var state = null;
+
+    function renderTokens(){
+      state = compute();
+      tokensEl.innerHTML = '';
+      state.words.forEach(function(w, i){
+        var wrap = document.createElement('div');
+        var chip = document.createElement('div');
+        chip.className = 'attn-token' + (i===activeIdx ? ' active' : '');
+        chip.textContent = w;
+        chip.addEventListener('click', function(){ activeIdx = (activeIdx===i) ? null : i; renderTokens(); drawAttn(); });
+        wrap.appendChild(chip);
+        var bars = document.createElement('div');
+        bars.className = 'vec-bars';
+        bars.style.width = '64px';
+        state.vecs[i].forEach(function(v){
+          var bar = document.createElement('i');
+          bar.style.height = (Math.abs(v)*100)+'%';
+          bar.style.opacity = 0.4 + Math.abs(v)*0.6;
+          bars.appendChild(bar);
+        });
+        wrap.appendChild(bars);
+        tokensEl.appendChild(wrap);
+      });
+      drawAttn();
+    }
+
+    function drawAttn(){
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      var n = state.words.length;
+      if(n===0) return;
+      var xs = state.words.map(function(_, i){ return (i+0.5)/n * W; });
+      var yTop = 40, yBottom = H-30;
+
+      state.words.forEach(function(w,i){
+        ctx.fillStyle = cssVar('--muted');
+        ctx.font = '12px IBM Plex Mono, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(w, xs[i], yBottom+18);
+        ctx.beginPath(); ctx.arc(xs[i], yBottom, 4, 0, Math.PI*2); ctx.fillStyle = cssVar('--ink'); ctx.fill();
+        ctx.beginPath(); ctx.arc(xs[i], yTop, 4, 0, Math.PI*2); ctx.fillStyle = cssVar('--ink'); ctx.fill();
+      });
+
+      var rows = activeIdx===null ? state.words.map(function(_,i){return i;}) : [activeIdx];
+      rows.forEach(function(i){
+        for(var j=0;j<n;j++){
+          var wgt = state.weights[i][j];
+          if(wgt < 0.03) continue;
+          ctx.beginPath();
+          var x1 = xs[i], x2 = xs[j];
+          var midX = (x1+x2)/2, midY = (yTop+yBottom)/2 - Math.abs(x1-x2)*0.15;
+          ctx.moveTo(x1, yBottom);
+          ctx.quadraticCurveTo(midX, midY, x2, yTop);
+          ctx.strokeStyle = cssVar('--accent');
+          ctx.globalAlpha = Math.min(0.9, wgt*1.8);
+          ctx.lineWidth = Math.max(0.6, wgt*10);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+      });
+
+      if(activeIdx !== null){
+        var pairs = state.words.map(function(w,j){ return {w:w, wt: state.weights[activeIdx][j]}; })
+          .sort(function(a,b){ return b.wt-a.wt; });
+        listEl.innerHTML = pairs.map(function(p){
+          return '<li><div><b>'+p.w+'</b><div class="bar" style="width:'+Math.round(p.wt*100)+'%"></div></div><span>'+(p.wt*100).toFixed(1)+'%</span></li>';
+        }).join('');
+      } else {
+        listEl.innerHTML = '<li class="muted" style="border:none;">Click a token above to isolate what it attends to</li>';
+      }
+    }
+
+    input.addEventListener('input', function(){ activeIdx=null; renderTokens(); });
+    renderTokens();
+  })();
+
+})();
+</script>
+</body>
+</html>

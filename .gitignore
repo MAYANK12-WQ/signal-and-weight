@@ -1,0 +1,4 @@
+# content.html is a body-only fragment kept locally to redeploy the Claude
+# Artifact preview of this page; index.html (the real site) is generated
+# from it and is what's actually published here.
+content.html
