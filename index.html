@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="A hands-on, click-and-drag primer on machine learning: glossary, curve-fitting, gradient descent, neurons, tokenization, embeddings, and attention, all playable in the browser.">
+<meta name="description" content="A hands-on, click-and-drag primer on machine learning: glossary, curve-fitting, gradient descent, neurons, tokenization, embeddings, attention, classification, and CNN filters, all playable in the browser.">
 <title>Signal & Weight</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,6 +17,7 @@
     --muted: #5B6472;
     --hair: #CBCABD;
     --accent: #B8791E;
+    --accent-text: #8C5A14;
     --accent-ink: #4A3308;
     --accent-soft: #F0DCB4;
     --accent2: #2E6367;
@@ -39,6 +40,7 @@
       --muted: #9AA3AC;
       --hair: #343C44;
       --accent: #E3A64B;
+      --accent-text: #E3A64B;
       --accent-ink: #FBEBCC;
       --accent-soft: #3A2E10;
       --accent2: #6FB8B0;
@@ -101,7 +103,7 @@
 
   .rail{
     position:sticky; top:0; align-self:start;
-    height:100dvh; overflow-y:auto;
+    height:100vh; height:100dvh; overflow-y:auto;
     padding:28px 18px 28px 28px;
     border-right:1px solid var(--hair);
   }
@@ -117,6 +119,7 @@
   .rail nav a .n{ font-family:var(--font-mono); font-size:11px; color:var(--muted); opacity:.7; }
   .rail nav a:hover{ background:var(--surface-2); color:var(--ink); }
   .rail nav a.hard{ color:var(--accent-ink); background:var(--accent-soft); }
+  .rail nav a.current{ box-shadow:inset 3px 0 0 var(--accent); font-weight:600; color:var(--ink); }
   .rail-note{ font-size:12px; color:var(--muted); border-top:1px solid var(--hair); padding-top:14px; }
   .theme-toggle{
     margin-top:16px; display:flex; gap:6px; border:1px solid var(--hair); border-radius:var(--radius-dial);
@@ -133,7 +136,7 @@
   /* ---------- hero ---------- */
   .hero{ padding:64px 48px 40px; border-bottom:1px solid var(--hair); }
   @media (max-width:640px){ .hero{ padding:40px 20px 28px; } }
-  .hero .kicker{ font-family:var(--font-mono); font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); margin-bottom:14px; }
+  .hero .kicker{ font-family:var(--font-mono); font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--accent-text); margin-bottom:14px; }
   .hero h1{ font-size:clamp(34px,5vw,58px); font-weight:600; line-height:1.05; margin-bottom:18px; }
   .hero h1 em{ font-style:italic; color:var(--accent); }
   .hero p.lede{ font-size:18px; color:var(--muted); max-width:60ch; }
@@ -144,7 +147,7 @@
   .exhibit{ padding:56px 48px; border-bottom:1px solid var(--hair); scroll-margin-top:20px; }
   @media (max-width:640px){ .exhibit{ padding:36px 20px; } }
   .exhibit-head{ display:flex; align-items:baseline; gap:14px; margin-bottom:8px; flex-wrap:wrap; }
-  .exhibit-eyebrow{ font-family:var(--font-mono); font-size:12px; color:var(--accent); letter-spacing:.06em; }
+  .exhibit-eyebrow{ font-family:var(--font-mono); font-size:12px; color:var(--accent-text); letter-spacing:.06em; }
   .exhibit h2{ font-size:clamp(24px,3vw,34px); font-weight:600; }
   .exhibit .dek{ color:var(--muted); font-size:16px; max-width:68ch; margin-bottom:28px; }
 
@@ -193,6 +196,9 @@
 
   .canvas-wrap{ width:100%; overflow-x:auto; }
   canvas{ display:block; max-width:100%; }
+  svg{ display:block; max-width:100%; height:auto; }
+  .math-box{ display:none; margin-top:14px; padding:14px 16px; background:var(--surface-2); border-radius:2px; font-family:var(--font-mono); font-size:12.5px; white-space:pre-wrap; line-height:1.7; color:var(--ink); }
+  #descentCanvas, #embedCanvas, #cnnCanvas, #cnnKernelCanvas, #classifyCanvas{ cursor:pointer; }
 
   .callout{
     background:var(--accent2-soft); border-left:3px solid var(--accent2); padding:14px 16px;
@@ -276,6 +282,41 @@
   .lifecycle-steps .step .num{ font-family:var(--font-mono); font-size:11px; color:var(--accent); }
   .lifecycle-steps .step h4{ font-family:var(--font-body); font-weight:600; font-size:14px; margin:6px 0 4px; }
   .lifecycle-steps .step p{ font-size:12.5px; color:var(--muted); margin:0; }
+
+  /* ---------- classification / confusion matrix ---------- */
+  .confusion-grid{
+    display:inline-grid; grid-template-columns:130px 150px 150px; gap:2px; background:var(--hair);
+    border:1px solid var(--hair); font-family:var(--font-mono); font-size:13px;
+  }
+  .confusion-grid > div{ background:var(--surface); padding:14px 12px; text-align:center; }
+  .confusion-grid .hdr{ background:var(--surface-2); font-weight:600; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); display:flex; align-items:center; justify-content:center; }
+  .confusion-grid .count{ font-size:22px; font-weight:600; }
+  .confusion-grid .correct{ background:var(--accent2-soft); }
+  .confusion-grid .wrong{ background:var(--accent-soft); }
+  .confusion-grid .sub{ display:block; font-size:10px; color:var(--muted); font-weight:400; margin-top:2px; }
+
+  /* ---------- CNN kernel ---------- */
+  .kernel-grid{ display:grid; grid-template-columns:repeat(3,44px); gap:4px; }
+  .kernel-grid input{
+    width:44px; height:36px; text-align:center; font-family:var(--font-mono); font-size:13px;
+    border:1px solid var(--hair); border-radius:2px; background:var(--surface); color:var(--ink);
+  }
+  .kernel-presets{ display:flex; gap:8px; flex-wrap:wrap; }
+
+  /* ---------- training vs prompting ---------- */
+  .compare-toggle{ display:inline-flex; border:1px solid var(--hair); border-radius:var(--radius-dial); padding:3px; margin-bottom:18px; }
+  .compare-toggle button{
+    border:none; background:transparent; color:var(--muted); font-family:var(--font-mono); font-size:12.5px;
+    padding:8px 18px; border-radius:var(--radius-dial); cursor:pointer; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .compare-toggle button.active{ background:var(--ink); color:var(--bg); }
+  .compare-panel{ display:none; }
+  .compare-panel.active{ display:block; }
+  .compare-diagram{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin:18px 0; font-family:var(--font-mono); font-size:13px; }
+  .compare-box{ border:1.5px solid var(--hair); border-radius:2px; padding:12px 16px; background:var(--surface-2); text-align:center; min-width:120px; }
+  .compare-box.locked{ border-color:var(--neg); color:var(--neg); }
+  .compare-box.open{ border-color:var(--pos); color:var(--pos); }
+  .compare-arrow{ color:var(--muted); font-size:18px; }
 </style>
 </head>
 <body>
@@ -293,6 +334,9 @@
       <a href="#tokens" class="hard"><span class="n">04</span> Breaking Language Apart</a>
       <a href="#embeddings" class="hard"><span class="n">05</span> Meaning as Coordinates</a>
       <a href="#attention"><span class="n">06</span> Putting It Together</a>
+      <a href="#classify"><span class="n">07</span> Where the Line Gets Drawn</a>
+      <a href="#cnn"><span class="n">08</span> Seeing in Patches</a>
+      <a href="#compare"><span class="n">09</span> Training vs. Prompting</a>
     </nav>
     <div class="theme-toggle" role="group" aria-label="Theme">
       <button data-theme-btn="system" class="active">Auto</button>
@@ -308,9 +352,9 @@
       <h1>Machine learning,<br><em>played with your hands</em>, not read off a slide.</h1>
       <p class="lede">Every term below is something you can drag, click, or break. Start with the glossary if a word trips you up, or jump straight to the three exhibits that explain how a neural network actually reads language — neurons, tokens, and embeddings.</p>
       <div class="hero-meta">
-        <span><b>7</b> interactive exhibits</span>
+        <span><b>10</b> interactive exhibits</span>
         <span><b>0</b> installs required</span>
-        <span><b>~5 yo</b> tested reading level, when explained aloud</span>
+        <span>simple enough to <b>explain out loud</b> to a five-year-old</span>
       </div>
     </section>
 
@@ -373,7 +417,7 @@
           <div class="readout"><div class="k">Slope here</div><div class="v mono" id="ballSlope">–</div></div>
         </div>
       </div>
-      <div class="callout"><span class="lbl">Try this</span><p>Drop the ball on the small bump on the right and run it. A learning rate that's too small can get stuck in that shallow dip (a <b>local minimum</b>) instead of finding the true lowest point on the left (the <b>global minimum</b>). Crank the learning rate up and the ball may overshoot entirely.</p></div>
+      <div class="callout"><span class="lbl">Try this</span><p>Leave the ball where it starts, on the left, and run it. With a small-to-medium learning rate it settles into that shallower dip near x≈-1.7 (a <b>local minimum</b>) and stays there — pure gradient descent only ever looks at the slope right under its feet, so it has no way to know a truly lower point exists near x≈1.76 on the right (the <b>global minimum</b>). Now crank the learning rate all the way up: a big enough step can accidentally leap over the hump in between and land closer to the real minimum — which shows why "just raise the learning rate" isn't a real fix, it's a gamble.</p></div>
     </section>
 
     <!-- ================= 03 NEURON ================= -->
@@ -382,7 +426,7 @@
       <p class="dek">A neuron multiplies each incoming number by a <b>weight</b>, adds them up, and squashes the result through an <b>activation function</b>. Drag the two inputs. Drag up or down directly on any connecting line to change its weight and watch every downstream neuron react.</p>
       <div class="panel">
         <div class="panel-title"><span>Forward pass</span><span class="mono" id="netFormula">activation: sigmoid</span></div>
-        <div class="canvas-wrap"><svg id="netSvg" width="760" height="420" role="img" aria-label="A small neural network diagram with draggable connections"></svg></div>
+        <div class="canvas-wrap"><svg id="netSvg" width="760" height="420" viewBox="0 0 760 420" role="img" aria-label="A small neural network diagram. Two input circles connect to three hidden circles, which connect to one output circle; each connection is a draggable, keyboard-adjustable weight line."></svg></div>
         <div class="controls">
           <div class="control">
             <label for="x1Slider">Input x&#8321; <span class="val" id="x1Val">0.50</span></label>
@@ -400,11 +444,15 @@
               <option value="relu">ReLU</option>
             </select>
           </div>
-          <div class="btn-row"><button class="btn ghost" id="netRegen">Randomize weights</button></div>
+          <div class="btn-row">
+            <button class="btn ghost" id="netRegen">Randomize weights</button>
+            <button class="btn ghost" id="netMathToggle">Show the arithmetic</button>
+          </div>
         </div>
         <div class="readout-row">
-          <div class="readout"><div class="k">Network output</div><div class="v mono" id="netOut">–</div></div>
+          <div class="readout"><div class="k">Network output</div><div class="v mono" id="netOut" aria-live="polite">–</div></div>
         </div>
+        <div class="math-box" id="netMath"></div>
       </div>
       <div class="callout"><span class="lbl">What you're seeing</span><p>Every line is a weight; its thickness is the weight's size and its color shows the sign — <span style="color:var(--pos)">teal strengthens</span>, <span style="color:var(--neg)">rust weakens</span>. Every circle is a neuron; brighter fill means it fired more strongly. <b>Training</b> a network is nothing more than automatically adjusting every one of these weights until the output matches what you wanted — the same drag you just did by hand, done by gradient descent instead.</p></div>
     </section>
@@ -432,7 +480,7 @@
           <div class="readout"><div class="k">Chars per token</div><div class="v mono" id="tokRatio">–</div></div>
         </div>
       </div>
-      <div class="callout"><span class="lbl">Try this</span><p>Switch to subword mode and type a long or unusual word like <span class="mono">"antidisestablishmentarianism"</span> or a made-up one like <span class="mono">"blorptastic"</span>. The model has never seen the whole word before, but it has seen small pieces of it — so it reads the piece it recognizes and reasons about the rest fragment by fragment, exactly like sounding out a word you've never read.</p></div>
+      <div class="callout"><span class="lbl">Try this</span><p>Switch to subword mode and type a long or unusual word like <span class="mono">"antidisestablishmentarianism"</span> or a made-up one like <span class="mono">"blorptastic"</span>. The model has never seen the whole word before, but it has seen small pieces of it — so it reads the piece it recognizes and reasons about the rest fragment by fragment, exactly like sounding out a word you've never read. <b>Honesty check:</b> this demo splits words using a small hand-written list of prefixes and suffixes, so you can see the idea clearly. A real tokenizer (like BPE, used by GPT-style models) doesn't use hand-written rules at all — it statistically learns a fixed vocabulary of ~30,000-100,000 pieces by scanning huge amounts of text for the most common repeated chunks.</p></div>
     </section>
 
     <!-- ================= 05 EMBEDDINGS ================= -->
@@ -440,15 +488,16 @@
       <div class="exhibit-head"><span class="exhibit-eyebrow">Exhibit 05 &middot; often confusing</span><h2>Meaning as Coordinates</h2></div>
       <p class="dek">Once text is tokens, each token gets converted into a list of numbers — a point in space — called an <b>embedding</b>. Words with related meaning end up near each other. Real embeddings use hundreds of numbers per word; this toy version uses two, so you can see it plotted directly. Click a word, or drag it somewhere new.</p>
       <div class="panel">
-        <div class="panel-title"><span>Toy embedding space (2 dimensions)</span><span class="mono" id="embedSelected">click a point</span></div>
+        <div class="panel-title"><span>Toy embedding space (2 dimensions)</span><span class="mono" id="embedSelected" aria-live="polite">click a point</span></div>
         <div class="embed-layout">
           <div>
             <div class="embed-legend" id="embedLegend"></div>
-            <div class="canvas-wrap"><canvas id="embedCanvas" width="500" height="440" role="img" aria-label="Scatter plot of words positioned by meaning"></canvas></div>
+            <div class="canvas-wrap"><canvas id="embedCanvas" width="500" height="440" role="img" aria-label="Scatter plot of words positioned by meaning; click or drag any word"></canvas></div>
+            <div class="btn-row" style="margin-top:12px;"><button class="btn ghost" id="embedReset">Reset positions</button></div>
           </div>
           <div>
             <div class="panel-title" style="margin-bottom:8px;">Nearest neighbors</div>
-            <ul class="neighbor-list" id="neighborList"><li class="muted" style="border:none;">Select a word to compare</li></ul>
+            <ul class="neighbor-list" id="neighborList" aria-live="polite"><li class="muted" style="border:none;">Select a word to compare</li></ul>
           </div>
         </div>
       </div>
@@ -465,8 +514,107 @@
         <div class="attn-tokens" id="attnTokens"></div>
         <div class="canvas-wrap"><canvas id="attnCanvas" width="760" height="230" role="img" aria-label="Diagram of attention weights between words"></canvas></div>
         <ul class="neighbor-list" id="attnList" style="margin-top:10px;"></ul>
+        <div id="attnBlended" style="display:none; margin-top:14px;">
+          <div class="panel-title" style="margin-bottom:6px;">This token's blended result, after attention</div>
+          <div class="vec-bars" style="width:120px; height:28px;"></div>
+        </div>
       </div>
-      <div class="callout"><span class="lbl">Reading the picture</span><p>Notice both "the"s get identical embeddings (same word, same fingerprint) but can still end up attending differently, because attention also depends on <em>which other words are nearby</em>. This is a simplified teaching version of the mechanism — a real transformer runs many attention "heads" in parallel across hundreds of dimensions. For a beautifully detailed, real-weights version of this exact idea, see the <a href="https://poloclub.github.io/transformer-explainer/" target="_blank" rel="noopener">Transformer Explainer</a> project, which inspired this exhibit.</p></div>
+      <div class="callout"><span class="lbl">Reading the picture</span><p>Each token is turned into three different vectors: a <b>Query</b> (what it's looking for), a <b>Key</b> (what it advertises about itself), and a <b>Value</b> (what it actually hands over if picked). Attention weight between two tokens is just how well one's Query matches another's Key; the bar chart above appears once you select a token and shows its new, blended Value vector — a mix of everyone it attended to. Also notice the two "the"s can still attend differently, because this demo adds a small positional signal to each embedding first, exactly like a real transformer does — otherwise identical words at different spots in the sentence would be mathematically indistinguishable. This is a simplified teaching version of the mechanism using fixed, hand-picked projections instead of ones learned from data — a real transformer learns its Q/K/V projections and runs many attention "heads" in parallel across hundreds of dimensions. For a beautifully detailed, real-weights version of this exact idea, see the <a href="https://poloclub.github.io/transformer-explainer/" target="_blank" rel="noopener">Transformer Explainer</a> project, which inspired this exhibit.</p></div>
+    </section>
+
+    <!-- ================= 07 CLASSIFICATION / CONFUSION MATRIX ================= -->
+    <section class="exhibit" id="classify">
+      <div class="exhibit-head"><span class="exhibit-eyebrow">Exhibit 07</span><h2>Where the Line Gets Drawn</h2></div>
+      <p class="dek">Every exhibit so far predicted a number. Most everyday ML decides between categories instead — spam or not, fraud or not. Drag the threshold and watch the boundary sweep across the data; the confusion matrix below updates with it.</p>
+      <div class="panel">
+        <div class="panel-title"><span>Spam classifier (2 features)</span><span class="mono" id="classifyThreshLabel">threshold = 0.50</span></div>
+        <div class="canvas-wrap"><canvas id="classifyCanvas" width="440" height="420" role="img" aria-label="Scatter plot of two classes of points with a movable diagonal decision boundary"></canvas></div>
+        <div class="controls">
+          <div class="control">
+            <label for="threshSlider">Decision threshold <span class="val" id="threshVal">0.50</span></label>
+            <input type="range" id="threshSlider" min="1" max="99" step="1" value="50">
+          </div>
+          <div class="btn-row"><button class="btn ghost" id="classifyRegen">New random data</button></div>
+        </div>
+        <div class="readout-row">
+          <div class="readout"><div class="k">Accuracy</div><div class="v mono" id="classifyAcc" aria-live="polite">–</div></div>
+          <div class="readout"><div class="k">Precision</div><div class="v mono" id="classifyPrec" aria-live="polite">–</div></div>
+          <div class="readout"><div class="k">Recall</div><div class="v mono" id="classifyRec" aria-live="polite">–</div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><span>Confusion matrix</span><span></span></div>
+        <div class="canvas-wrap"><div class="confusion-grid" id="confusionGrid" role="table" aria-label="Confusion matrix of predicted versus actual class"></div></div>
+      </div>
+      <div class="callout"><span class="lbl">Try this</span><p>Drag the threshold to the far left: everything gets called "spam," recall hits 100% (no real spam is ever missed) but precision collapses (most things flagged aren't actually spam). Drag it to the far right and the opposite happens. <b>There is no single threshold that's correct</b> — it's a real trade-off you choose based on which mistake is more expensive: a spam email in your inbox, or a real one in your spam folder.</p></div>
+    </section>
+
+    <!-- ================= 08 CNN FILTERS ================= -->
+    <section class="exhibit" id="cnn">
+      <div class="exhibit-head"><span class="exhibit-eyebrow">Exhibit 08</span><h2>Seeing in Patches</h2></div>
+      <p class="dek">Images are grids of numbers (brightness values), and a <b>convolutional</b> network scans a small grid of learned numbers — a <b>kernel</b> — across every position, looking for one specific pattern. Pick a preset or type your own numbers and watch the output image change.</p>
+      <div class="panel">
+        <div class="panel-title"><span>Kernel / filter</span><span></span></div>
+        <div class="controls" style="margin-top:0;">
+          <div class="control" style="min-width:auto;">
+            <div class="kernel-grid" id="kernelGrid"></div>
+          </div>
+          <div class="control" style="min-width:220px;">
+            <label>Presets</label>
+            <div class="kernel-presets">
+              <button class="btn ghost" data-kernel="edge">Edge detect</button>
+              <button class="btn ghost" data-kernel="blur">Blur</button>
+              <button class="btn ghost" data-kernel="sharpen">Sharpen</button>
+              <button class="btn ghost" data-kernel="identity">Identity</button>
+            </div>
+          </div>
+        </div>
+        <div class="readout-row" style="margin-top:22px; align-items:flex-start;">
+          <div>
+            <div class="k" style="margin-bottom:8px;">Input image (10&times;10 pixels)</div>
+            <div class="canvas-wrap"><canvas id="cnnCanvas" width="200" height="200" role="img" aria-label="A small 10 by 10 pixel input image you can draw on"></canvas></div>
+          </div>
+          <div>
+            <div class="k" style="margin-bottom:8px;">After this kernel slides across it</div>
+            <div class="canvas-wrap"><canvas id="cnnOutCanvas" width="200" height="200" role="img" aria-label="The resulting image after the kernel is applied"></canvas></div>
+          </div>
+        </div>
+        <p class="muted" style="font-size:12.5px; margin-top:10px;">Click or drag on the input image to draw your own shape.</p>
+      </div>
+      <div class="callout"><span class="lbl">What you're seeing</span><p>This single kernel only knows how to look for one thing. A real CNN stacks dozens of kernels per layer and dozens of layers — early layers learn simple things like edges (exactly like the one here), and later layers combine those into eyes, wheels, or whatever the network needs to recognize. Nobody hand-picks these numbers in a real network; they're learned by gradient descent, same as every other weight on this page.</p></div>
+    </section>
+
+    <!-- ================= 09 TRAINING VS PROMPTING ================= -->
+    <section class="exhibit" id="compare">
+      <div class="exhibit-head"><span class="exhibit-eyebrow">Exhibit 09</span><h2>Training vs. Prompting</h2></div>
+      <p class="dek">If you've used a chatbot, you've already changed its behavior by typing instructions — so why does anyone bother with the expensive part? Toggle between the two to see what each one actually changes.</p>
+      <div class="panel">
+        <div class="compare-toggle" role="tablist" aria-label="Compare training and prompting">
+          <button class="active" data-compare="train" role="tab" aria-selected="true">Training</button>
+          <button data-compare="prompt" role="tab" aria-selected="false">Prompting</button>
+        </div>
+        <div class="compare-panel active" id="comparePanelTrain">
+          <div class="compare-diagram">
+            <div class="compare-box open">Millions of examples</div>
+            <span class="compare-arrow">&rarr;</span>
+            <div class="compare-box open">Gradient descent<span style="display:block;font-size:10px;color:var(--muted);">(hours-to-weeks, needs a GPU)</span></div>
+            <span class="compare-arrow">&rarr;</span>
+            <div class="compare-box open">Every weight in the network changes, permanently</div>
+          </div>
+          <p>Training is exactly Exhibits 02 and 03, done automatically, at enormous scale: millions of examples, each one nudging every weight a tiny amount. The result is baked into the model's parameters — it doesn't forget it between conversations, and it applies to every future user, forever, until someone trains it again.</p>
+        </div>
+        <div class="compare-panel" id="comparePanelPrompt">
+          <div class="compare-diagram">
+            <div class="compare-box locked">Your typed instructions</div>
+            <span class="compare-arrow">&rarr;</span>
+            <div class="compare-box locked">One forward pass<span style="display:block;font-size:10px;color:var(--muted);">(seconds, no training happens)</span></div>
+            <span class="compare-arrow">&rarr;</span>
+            <div class="compare-box locked">Zero weights change — only this conversation is affected</div>
+          </div>
+          <p>Prompting doesn't touch a single weight — it just hands the frozen, already-trained network some extra context to read before it answers, the same way giving a person a reference sheet changes what they say without changing what they know. Close the conversation and the effect disappears completely; the model that greets the next user is byte-for-byte identical.</p>
+        </div>
+      </div>
+      <div class="callout"><span class="lbl">Why this matters</span><p>This is why you can't fix a chatbot's factual gaps just by asking nicely, but you also don't need a GPU cluster to make it follow a new tone or format. Fine-tuning sits in between: it's real training (weights genuinely change) but starting from an already-trained model on a much smaller, cheaper dataset.</p></div>
     </section>
 
     <footer>
@@ -502,6 +650,23 @@
   }catch(e){}
 
   function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function escapeHtml(s){ var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+  /* Highlight whichever exhibit is currently on screen in the sidebar nav --
+     useful for a professor jumping around live without losing their place. */
+  if('IntersectionObserver' in window){
+    var navLinks = Array.prototype.slice.call(document.querySelectorAll('.rail nav a'));
+    var sections = navLinks.map(function(a){ return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        var link = navLinks.filter(function(a){ return a.getAttribute('href') === '#'+entry.target.id; })[0];
+        if(!link) return;
+        if(entry.isIntersecting) link.classList.add('current');
+        else link.classList.remove('current');
+      });
+    }, { rootMargin: '-10% 0px -70% 0px' });
+    sections.forEach(function(s){ io.observe(s); });
+  }
 
   /* ============================================================
      00. GLOSSARY
@@ -529,7 +694,15 @@
     {t:"Batch", c:"Training", d:"A small chunk of the training data processed together before the model's parameters are updated once."},
     {t:"Overfitting", c:"Training", d:"The model memorizes the exact training examples, including their noise, instead of learning the general pattern — see Exhibit 01."},
     {t:"Underfitting", c:"Training", d:"The model is too simple to capture the pattern at all, so it performs poorly even on the data it trained on."},
-    {t:"Bias", c:"Training", d:"Statistically: systematic error from an overly simple model. Ethically: a model reproducing unfair patterns present in its training data — a different, equally important meaning of the same word."},
+    {t:"Bias (Statistical)", c:"Training", d:"Systematic error from a model that's too simple to capture the real pattern — the mathematical sense of the word, and the opposite failure mode from variance."},
+    {t:"Bias (Fairness)", c:"Evaluation", d:"A model reproducing or amplifying unfair patterns present in its training data — a completely different, equally important sense of the same word, unrelated to the statistical one."},
+    {t:"Local Minimum", c:"Training", d:"A point where the error is lower than everywhere nearby, but not the lowest possible overall — gradient descent can get trapped here since it only ever looks at the slope right under its feet. See Exhibit 02."},
+    {t:"Global Minimum", c:"Training", d:"The single lowest point the error could possibly reach — what training is actually trying to find, though it isn't guaranteed to."},
+    {t:"Decision Boundary", c:"Training", d:"The line (or curved surface) a classifier draws to separate one predicted category from another. Move the boundary and every prediction on the wrong side of it flips."},
+    {t:"Threshold", c:"Evaluation", d:"The cutoff probability above which a classifier calls something 'positive.' Moving it trades precision against recall — it doesn't change the model, only how cautious it is."},
+    {t:"Query, Key & Value", c:"Language & Transformers", d:"The three vectors attention derives from every token: a Query (what it's looking for), a Key (what it advertises), and a Value (what it contributes if attended to). See Exhibit 06."},
+    {t:"Positional Encoding", c:"Language & Transformers", d:"A signal added to each token's embedding recording where it sits in the sequence — without it, a transformer couldn't tell 'dog bites man' from 'man bites dog.'"},
+    {t:"Kernel / Filter", c:"Neural Networks", d:"A small grid of learned numbers that slides across an image looking for one specific pattern, like an edge or a corner — the core building block of a CNN."},
     {t:"Variance", c:"Training", d:"How much a model's predictions would change if it were trained on a slightly different sample of data. High variance is a symptom of overfitting."},
     {t:"Validation Set", c:"Training", d:"Data held back from training, used to tune hyperparameters and check for overfitting along the way."},
     {t:"Test Set", c:"Training", d:"Data held back and touched only once, at the very end, to report how the finished model performs on truly unseen examples."},
@@ -724,7 +897,6 @@
     degSlider.addEventListener('input', draw);
     regenBtn.addEventListener('click', function(){ genData(); draw(); });
     genData(); draw();
-    window.addEventListener('resize', draw);
   })();
 
   /* ============================================================
@@ -812,8 +984,8 @@
     stepBtn.addEventListener('click', function(){ running=false; doStep(); });
     resetBtn.addEventListener('click', function(){ ballX=-2.6; trail=[]; steps=0; running=false; draw(); });
     runBtn.addEventListener('click', function(){
+      if(running) return; // a second click while already running would start a concurrent loop over the same shared ballX/steps
       running = true;
-      var lastGrad = null, sameSignCount = 0;
       function loop(){
         if(!running) return;
         var before = ballX;
@@ -839,6 +1011,10 @@
     var netOutEl = document.getElementById('netOut');
     var netFormula = document.getElementById('netFormula');
     var regenBtn = document.getElementById('netRegen');
+    var mathToggle = document.getElementById('netMathToggle');
+    var mathBox = document.getElementById('netMath');
+    var showMath = false;
+    var focusedEdgeId = null;
 
     var NS = "http://www.w3.org/2000/svg";
     var W = 760, H = 420;
@@ -888,7 +1064,7 @@
       t.textContent = str;
       return t;
     }
-    function edgeLine(x1,y1,x2,y2,weight, dragHandler){
+    function edgeLine(edgeId, x1,y1,x2,y2,weight, dragHandler){
       var g = document.createElementNS(NS,'g');
       var w = Math.min(8, 1 + Math.abs(weight)*6);
       var color = weight >= 0 ? cssVar('--pos') : cssVar('--neg');
@@ -896,15 +1072,41 @@
       line.setAttribute('x1',x1); line.setAttribute('y1',y1); line.setAttribute('x2',x2); line.setAttribute('y2',y2);
       line.setAttribute('stroke', color); line.setAttribute('stroke-width', w); line.setAttribute('stroke-linecap','round');
       line.setAttribute('opacity', '0.85');
+
+      // A signed numeric label next to every edge -- color (teal/rust) alone
+      // would be unreadable to red-green colorblind viewers, and the "+"/"-"
+      // makes the sign explicit regardless of color perception.
+      var mx = (x1+x2)/2, my = (y1+y2)/2;
+      var sign = weight >= 0 ? '+' : '';
+      var lbl = text(mx, my - 6, sign + weight.toFixed(2), 10, color, 'middle');
+      lbl.setAttribute('paint-order','stroke');
+      lbl.setAttribute('stroke', cssVar('--surface'));
+      lbl.setAttribute('stroke-width','3');
+
       var hit = document.createElementNS(NS,'line');
       hit.setAttribute('x1',x1); hit.setAttribute('y1',y1); hit.setAttribute('x2',x2); hit.setAttribute('y2',y2);
       hit.setAttribute('stroke','transparent'); hit.setAttribute('stroke-width','16'); hit.style.cursor='ns-resize';
-      g.appendChild(line); g.appendChild(hit);
+      hit.setAttribute('data-edge-id', edgeId);
+      hit.setAttribute('tabindex','0');
+      hit.setAttribute('role','slider');
+      hit.setAttribute('aria-label', 'Connection weight, currently ' + weight.toFixed(2) + '. Use arrow keys to adjust.');
+      hit.setAttribute('aria-valuenow', weight.toFixed(2));
+      hit.setAttribute('aria-valuemin','-1.5');
+      hit.setAttribute('aria-valuemax','1.5');
+      g.appendChild(line); g.appendChild(lbl); g.appendChild(hit);
+
+      hit.addEventListener('focus', function(){ focusedEdgeId = edgeId; });
+      hit.addEventListener('blur', function(){ if(focusedEdgeId === edgeId) focusedEdgeId = null; });
+      hit.addEventListener('keydown', function(e){
+        if(e.key === 'ArrowUp' || e.key === 'ArrowRight'){ e.preventDefault(); dragHandler(0.05); }
+        else if(e.key === 'ArrowDown' || e.key === 'ArrowLeft'){ e.preventDefault(); dragHandler(-0.05); }
+      });
       hit.addEventListener('pointerdown', function(e){
         // Capture on the persistent <svg>, not on this <line> -- render() tears
         // down and rebuilds every edge each frame, and a captured element
         // silently loses capture the instant it's removed from the DOM.
         svg.setPointerCapture(e.pointerId);
+        hit.focus();
         var startY = e.clientY;
         function move(ev){
           var rect = svg.getBoundingClientRect();
@@ -928,10 +1130,10 @@
       x1Val.textContent = x1.toFixed(2); x2Val.textContent = x2.toFixed(2);
       netFormula.textContent = 'activation: ' + actName;
 
-      var hidden = [0,0,0];
+      var hidden = [0,0,0], hiddenZ = [0,0,0];
       for(var h=0; h<3; h++){
-        var z = x1*w1[h] + x2*w2[h] + bias1[h];
-        hidden[h] = act(actName, z);
+        hiddenZ[h] = x1*w1[h] + x2*w2[h] + bias1[h];
+        hidden[h] = act(actName, hiddenZ[h]);
       }
       var outZ = hidden[0]*w3[0] + hidden[1]*w3[1] + hidden[2]*w3[2] + bias2;
       var out = act(actName, outZ);
@@ -940,11 +1142,11 @@
       // edges input->hidden
       for(h=0; h<3; h++){
         (function(h){
-          var e1 = edgeLine(layerX[0], inputY[0], layerX[1], hiddenY[h], w1[h], function(delta){ w1[h] = Math.max(-1.5,Math.min(1.5,w1[h]+delta)); render(); });
+          var e1 = edgeLine('i0h'+h, layerX[0], inputY[0], layerX[1], hiddenY[h], w1[h], function(delta){ w1[h] = Math.max(-1.5,Math.min(1.5,w1[h]+delta)); render(); });
           edgesG.appendChild(e1.g);
-          var e2 = edgeLine(layerX[0], inputY[1], layerX[1], hiddenY[h], w2[h], function(delta){ w2[h] = Math.max(-1.5,Math.min(1.5,w2[h]+delta)); render(); });
+          var e2 = edgeLine('i1h'+h, layerX[0], inputY[1], layerX[1], hiddenY[h], w2[h], function(delta){ w2[h] = Math.max(-1.5,Math.min(1.5,w2[h]+delta)); render(); });
           edgesG.appendChild(e2.g);
-          var e3 = edgeLine(layerX[1], hiddenY[h], layerX[2], outputY[0], w3[h], function(delta){ w3[h] = Math.max(-1.5,Math.min(1.5,w3[h]+delta)); render(); });
+          var e3 = edgeLine('h'+h+'o', layerX[1], hiddenY[h], layerX[2], outputY[0], w3[h], function(delta){ w3[h] = Math.max(-1.5,Math.min(1.5,w3[h]+delta)); render(); });
           edgesG.appendChild(e3.g);
         })(h);
       }
@@ -956,29 +1158,74 @@
         labelsG.appendChild(text(layerX[0], inputY[i]+4, v.toFixed(2), 12, '#1B2430'));
         labelsG.appendChild(text(layerX[0], inputY[i]-32, 'x'+(i+1), 12, cssVar('--muted')));
       });
-      // hidden nodes
+      // hidden nodes -- mixColor takes the *magnitude* of the activation, since
+      // tanh can fire strongly negative; using the signed value made a
+      // strongly-negative neuron look identical to a barely-active one.
       hidden.forEach(function(v,i){
-        nodesG.appendChild(circle(layerX[1], hiddenY[i], 24, mixColor(v)));
+        nodesG.appendChild(circle(layerX[1], hiddenY[i], 24, mixColor(Math.abs(v))));
         labelsG.appendChild(text(layerX[1], hiddenY[i]+4, v.toFixed(2), 12, '#1B2430'));
       });
       // output node
-      nodesG.appendChild(circle(layerX[2], outputY[0], 26, mixColor(out)));
+      nodesG.appendChild(circle(layerX[2], outputY[0], 26, mixColor(Math.abs(out))));
       labelsG.appendChild(text(layerX[2], outputY[0]+4, out.toFixed(2), 12, '#1B2430'));
       labelsG.appendChild(text(layerX[2]+70, outputY[0]+4, 'output', 12, cssVar('--muted'), 'start'));
       labelsG.appendChild(text(layerX[1], 20, 'hidden layer', 11, cssVar('--muted')));
       labelsG.appendChild(text(layerX[0], 20, 'inputs', 11, cssVar('--muted')));
+
+      // Dragging or arrow-keying a weight rebuilds the whole SVG every frame,
+      // which would otherwise silently steal keyboard focus off the edge
+      // being adjusted -- put it back on the matching rebuilt element.
+      if(focusedEdgeId){
+        var match = edgesG.querySelector('[data-edge-id="'+focusedEdgeId+'"]');
+        if(match) match.focus();
+      }
+
+      if(showMath) renderMath(x1, x2, hiddenZ, hidden, outZ, out, actName);
+    }
+
+    function renderMath(x1, x2, hiddenZ, hidden, outZ, out, actName){
+      var lines = [];
+      for(var h=0; h<3; h++){
+        lines.push(
+          'hidden' + (h+1) + ' = ' + actName + '(x1*w + x2*w + bias)\n' +
+          '        = ' + actName + '(' + x1.toFixed(2) + '*' + w1[h].toFixed(2) + ' + ' + x2.toFixed(2) + '*' + w2[h].toFixed(2) + ' + ' + bias1[h].toFixed(2) + ')\n' +
+          '        = ' + actName + '(' + hiddenZ[h].toFixed(2) + ') = ' + hidden[h].toFixed(3)
+        );
+      }
+      var outTerms = hidden.map(function(v,i){ return v.toFixed(2)+'*'+w3[i].toFixed(2); }).join(' + ');
+      lines.push(
+        'output = ' + actName + '(' + outTerms + ' + ' + bias2.toFixed(2) + ')\n' +
+        '       = ' + actName + '(' + outZ.toFixed(2) + ') = ' + out.toFixed(3)
+      );
+      mathBox.textContent = lines.join('\n\n');
+    }
+
+    function hexToRgb(hex){
+      hex = hex.replace('#','');
+      if(hex.length===3){ hex = hex.charAt(0)+hex.charAt(0)+hex.charAt(1)+hex.charAt(1)+hex.charAt(2)+hex.charAt(2); }
+      var num = parseInt(hex,16);
+      return [(num>>16)&255, (num>>8)&255, num&255];
     }
     function mixColor(t){
       t = Math.max(0, Math.min(1, t));
-      var accent = getComputedStyle(document.documentElement).getPropertyValue('--accent-soft').trim();
-      var full = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-      return t > 0.5 ? full : accent;
+      var soft = hexToRgb(cssVar('--accent-soft'));
+      var full = hexToRgb(cssVar('--accent'));
+      var r = Math.round(soft[0]+(full[0]-soft[0])*t);
+      var g = Math.round(soft[1]+(full[1]-soft[1])*t);
+      var b = Math.round(soft[2]+(full[2]-soft[2])*t);
+      return 'rgb('+r+','+g+','+b+')';
     }
 
     x1Slider.addEventListener('input', render);
     x2Slider.addEventListener('input', render);
     actSelect.addEventListener('change', render);
     regenBtn.addEventListener('click', function(){ randomWeights(); render(); });
+    mathToggle.addEventListener('click', function(){
+      showMath = !showMath;
+      mathToggle.textContent = showMath ? 'Hide the arithmetic' : 'Show the arithmetic';
+      mathBox.style.display = showMath ? 'block' : 'none';
+      render();
+    });
     randomWeights(); render();
   })();
 
@@ -986,45 +1233,57 @@
      04. TOKENIZER PLAYGROUND
   ============================================================ */
   var CHIP_PALETTE = ['#F0DCB4','#D9E6E4','#E7D6E8','#D6E4F0','#F0D9D0','#DDEBD0','#EBE3C8','#D8E8E0'];
-  var SUBWORD_PIECES = ["anti","dis","un","re","pre","non","over","under","out","ing","tion","sion","ment","ness","ful","less","able","ible","ist","ism","ity","ous","ive","al","ic","ed","er","est","ly","s","tastic","ology","arian"];
+  var PREFIX_PIECES = ["anti","dis","un","re","pre","non","over","under","out"];
+  var SUFFIX_PIECES = ["tastic","ology","arian","ation","ition","ing","tion","sion","ment","ness","ful","less","able","ible","ist","ism","ity","ous","ive","al","ic","ed","er","est","ly","s"];
 
+  // Prefixes are peeled from the front and suffixes from the back, so they
+  // must be collected into two separate arrays and only the suffix array
+  // reversed -- an earlier version pushed both into one array and reversed
+  // the whole thing, which read the front-derived pieces backwards (e.g.
+  // "beautifully" -> "ti ##beau ##ful ##ly" instead of "beau ##ti ##ful ##ly").
   function tokenizeWord(word){
     var m = word.match(/^([a-zA-Z]+)([^a-zA-Z]*)$/);
     var core = m ? m[1] : word;
     var trail = m ? m[2] : '';
-    var pieces = [];
-    var lower = core.toLowerCase();
-    var remaining = lower;
+    var remaining = core.toLowerCase();
+
+    var front = [];
     var guard = 0;
-    while(remaining.length > 0 && guard < 20){
+    while(guard < 6){
       guard++;
-      if(remaining.length <= 4){ pieces.push(remaining); break; }
-      var matched = null;
-      for(var i=0;i<SUBWORD_PIECES.length;i++){
-        var piece = SUBWORD_PIECES[i];
-        if(remaining.indexOf(piece) === 0 && piece.length < remaining.length){ matched = piece; break; }
+      var pre = null;
+      for(var i=0;i<PREFIX_PIECES.length;i++){
+        var p = PREFIX_PIECES[i];
+        if(remaining.indexOf(p) === 0 && remaining.length - p.length >= 4){ pre = p; break; }
       }
-      if(!matched){
-        for(var j=0;j<SUBWORD_PIECES.length;j++){
-          var p2 = SUBWORD_PIECES[j];
-          if(remaining.length - p2.length >= 2 && remaining.slice(-p2.length) === p2){ matched = {suffix:p2}; break; }
-        }
-      }
-      if(matched && matched.suffix){
-        pieces.push('##'+matched.suffix);
-        remaining = remaining.slice(0, remaining.length-matched.suffix.length);
-      } else if(matched){
-        pieces.push(matched);
-        remaining = remaining.slice(matched.length);
-      } else {
-        pieces.push(remaining.slice(0,4));
-        remaining = remaining.slice(4);
-      }
+      if(!pre) break;
+      front.push(pre);
+      remaining = remaining.slice(pre.length);
     }
-    pieces.reverse();
+
+    var back = [];
+    guard = 0;
+    while(guard < 6){
+      guard++;
+      var suf = null;
+      for(var j=0;j<SUFFIX_PIECES.length;j++){
+        var s = SUFFIX_PIECES[j];
+        if(remaining.length - s.length >= 4 && remaining.slice(-s.length) === s){ suf = s; break; }
+      }
+      if(!suf) break;
+      back.push(suf); // collected outermost-first (right end inward); reversed below into reading order
+      remaining = remaining.slice(0, remaining.length - suf.length);
+    }
+    back.reverse();
+
+    var middle = [];
+    while(remaining.length > 4){ middle.push(remaining.slice(0,4)); remaining = remaining.slice(4); }
+    if(remaining.length > 0) middle.push(remaining);
+
+    var pieces = front.concat(middle).concat(back);
     var out = [];
     for(var k=0;k<pieces.length;k++){
-      out.push(k===0 ? pieces[k] : '##'+pieces[k].replace('##',''));
+      out.push(k===0 ? pieces[k] : '##'+pieces[k]);
     }
     if(trail) out.push(trail);
     return out;
@@ -1077,7 +1336,6 @@
       var totalChars = text.replace(/\s+/g,'').length;
       ratioEl.textContent = tokens.length ? (totalChars/tokens.length).toFixed(1) : '–';
     }
-    function escapeHtml(s){ var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 
     input.addEventListener('input', render);
     render();
@@ -1111,6 +1369,7 @@
     {w:"basketball", cat:"Sports", x:0.58, y:0.98}, {w:"cycling", cat:"Sports", x:0.44, y:0.90}
   ];
   var CAT_COLORS = { Animals:"#B8791E", Food:"#A8482F", Emotions:"#7A5FB8", Tech:"#2E6367", Weather:"#3E6FB8", Sports:"#5B8A3A" };
+  var EMBED_WORDS_ORIGINAL = EMBED_WORDS.map(function(w){ return {w:w.w, x:w.x, y:w.y}; });
 
   (function initEmbed(){
     var canvas = document.getElementById('embedCanvas');
@@ -1118,21 +1377,40 @@
     var legend = document.getElementById('embedLegend');
     var neighborList = document.getElementById('neighborList');
     var selectedEl = document.getElementById('embedSelected');
+    var resetBtn = document.getElementById('embedReset');
     var activeCats = {};
     Object.keys(CAT_COLORS).forEach(function(c){ activeCats[c] = true; });
-    var selected = null, dragging = null;
+    var selected = null, dragging = null, hovered = null;
     var pad = 26;
 
     Object.keys(CAT_COLORS).forEach(function(cat){
       var pill = document.createElement('div');
       pill.className = 'legend-pill';
+      pill.tabIndex = 0;
+      pill.setAttribute('role','button');
+      pill.setAttribute('aria-pressed','true');
+      pill.setAttribute('aria-label', 'Toggle ' + cat + ' category');
       pill.innerHTML = '<span class="dot" style="background:'+CAT_COLORS[cat]+'"></span>' + cat;
-      pill.addEventListener('click', function(){
+      function togglePill(){
         activeCats[cat] = !activeCats[cat];
         pill.classList.toggle('off', !activeCats[cat]);
+        pill.setAttribute('aria-pressed', activeCats[cat] ? 'true' : 'false');
+        // If the currently-selected word just got hidden, its neighbor
+        // lines/panel would keep referencing an invisible point -- drop it.
+        if(selected && selected.cat === cat && !activeCats[cat]) selected = null;
         draw();
-      });
+      }
+      pill.addEventListener('click', togglePill);
+      pill.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); togglePill(); } });
       legend.appendChild(pill);
+    });
+
+    resetBtn.addEventListener('click', function(){
+      EMBED_WORDS.forEach(function(w){
+        var orig = EMBED_WORDS_ORIGINAL.filter(function(o){ return o.w===w.w; })[0];
+        if(orig){ w.x = orig.x; w.y = orig.y; }
+      });
+      draw();
     });
 
     function toPx(pt){ return { x: pad + pt.x*(canvas.width-2*pad), y: pad + pt.y*(canvas.height-2*pad) }; }
@@ -1210,16 +1488,20 @@
     canvas.addEventListener('pointerdown', function(e){
       var pos = evtPos(e);
       var w = hit(pos.x,pos.y);
-      if(w){ selected = w; dragging = w; canvas.setPointerCapture(e.pointerId); draw(); }
+      if(w){ selected = w; dragging = w; canvas.setPointerCapture(e.pointerId); canvas.style.cursor='grabbing'; draw(); }
     });
     canvas.addEventListener('pointermove', function(e){
-      if(!dragging) return;
       var pos = evtPos(e);
-      dragging.x = Math.max(0,Math.min(1,(pos.x-pad)/(canvas.width-2*pad)));
-      dragging.y = Math.max(0,Math.min(1,(pos.y-pad)/(canvas.height-2*pad)));
-      draw();
+      if(dragging){
+        dragging.x = Math.max(0,Math.min(1,(pos.x-pad)/(canvas.width-2*pad)));
+        dragging.y = Math.max(0,Math.min(1,(pos.y-pad)/(canvas.height-2*pad)));
+        draw();
+        return;
+      }
+      hovered = hit(pos.x, pos.y);
+      canvas.style.cursor = hovered ? 'grab' : 'pointer';
     });
-    canvas.addEventListener('pointerup', function(){ dragging = null; });
+    canvas.addEventListener('pointerup', function(){ dragging = null; canvas.style.cursor = hovered ? 'grab' : 'pointer'; });
 
     draw();
   })();
@@ -1233,6 +1515,7 @@
     var canvas = document.getElementById('attnCanvas');
     var ctx = canvas.getContext('2d');
     var listEl = document.getElementById('attnList');
+    var blendedEl = document.getElementById('attnBlended');
     var activeIdx = null;
 
     function hashVec(word, dims){
@@ -1245,6 +1528,28 @@
       }
       return v;
     }
+    // A small positional wiggle added to each word's embedding, exactly like
+    // real transformers add positional encoding before attention -- without
+    // it, the same word at two different positions would be mathematically
+    // identical and could never attend differently, which would make the
+    // callout below (about the two "the"s) simply false.
+    function positionalVec(i, dims){
+      var v = [];
+      for(var d=0; d<dims; d++) v.push(Math.sin((i+1) / Math.pow(2.7, d/dims)) * 0.4);
+      return v;
+    }
+    function addVec(a,b){ return a.map(function(x,i){ return x+b[i]; }); }
+    // Stand-ins for the learned W_q / W_k / W_v projection matrices a real
+    // transformer trains -- fixed here (not learned) purely so the same
+    // embedding consistently produces three different-purpose vectors:
+    // "what am I looking for" (Q), "what do I advertise" (K), and "what do
+    // I actually contribute if attended to" (V).
+    var PROJ_Q = [[0.8,0.2,-0.3,0.1],[0.1,0.7,0.2,-0.4],[-0.2,0.3,0.9,0.1],[0.3,-0.1,0.2,0.6]];
+    var PROJ_K = [[0.5,-0.4,0.3,0.2],[0.2,0.6,-0.3,0.1],[0.4,0.1,0.5,-0.3],[-0.1,0.3,0.2,0.7]];
+    var PROJ_V = [[0.6,0.1,0.2,-0.2],[-0.3,0.5,0.1,0.3],[0.2,-0.2,0.6,0.1],[0.1,0.4,-0.1,0.5]];
+    function matVec(mat, v){
+      return mat.map(function(row){ return row.reduce(function(s,w,i){ return s+w*v[i]; },0); });
+    }
     function dot(a,b){ var s=0; for(var i=0;i<a.length;i++) s+=a[i]*b[i]; return s; }
     function softmax(arr){
       var m = Math.max.apply(null, arr);
@@ -1256,16 +1561,34 @@
     function compute(){
       var text = input.value.trim();
       var words = text.split(/\s+/).filter(Boolean);
-      var vecs = words.map(function(w){ return hashVec(w.toLowerCase(), 4); });
       var d = 4;
+      var embedded = words.map(function(w,i){ return addVec(hashVec(w.toLowerCase(), d), positionalVec(i, d)); });
+      var qVecs = embedded.map(function(v){ return matVec(PROJ_Q, v); });
+      var kVecs = embedded.map(function(v){ return matVec(PROJ_K, v); });
+      var vVecs = embedded.map(function(v){ return matVec(PROJ_V, v); });
       var weights = words.map(function(_, i){
-        var scores = words.map(function(_, j){ return dot(vecs[i], vecs[j]) / Math.sqrt(d); });
+        var scores = words.map(function(_, j){ return dot(qVecs[i], kVecs[j]) / Math.sqrt(d); });
         return softmax(scores);
       });
-      return { words: words, vecs: vecs, weights: weights };
+      var blended = words.map(function(_, i){
+        var out = [0,0,0,0];
+        for(var j=0;j<words.length;j++){ for(var dd=0; dd<d; dd++) out[dd] += weights[i][j]*vVecs[j][dd]; }
+        return out;
+      });
+      return { words: words, vecs: embedded, weights: weights, blended: blended };
     }
 
     var state = null;
+
+    function bars(container, values){
+      container.innerHTML = '';
+      values.forEach(function(v){
+        var bar = document.createElement('i');
+        bar.style.height = (Math.min(1,Math.abs(v))*100)+'%';
+        bar.style.opacity = 0.4 + Math.min(1,Math.abs(v))*0.6;
+        container.appendChild(bar);
+      });
+    }
 
     function renderTokens(){
       state = compute();
@@ -1275,18 +1598,19 @@
         var chip = document.createElement('div');
         chip.className = 'attn-token' + (i===activeIdx ? ' active' : '');
         chip.textContent = w;
-        chip.addEventListener('click', function(){ activeIdx = (activeIdx===i) ? null : i; renderTokens(); drawAttn(); });
+        chip.tabIndex = 0;
+        chip.setAttribute('role','button');
+        chip.setAttribute('aria-pressed', i===activeIdx ? 'true' : 'false');
+        chip.setAttribute('aria-label', 'Token "' + w + '", position ' + (i+1) + '. Activate to see what it attends to.');
+        function toggle(){ activeIdx = (activeIdx===i) ? null : i; renderTokens(); drawAttn(); }
+        chip.addEventListener('click', toggle);
+        chip.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); } });
         wrap.appendChild(chip);
-        var bars = document.createElement('div');
-        bars.className = 'vec-bars';
-        bars.style.width = '64px';
-        state.vecs[i].forEach(function(v){
-          var bar = document.createElement('i');
-          bar.style.height = (Math.abs(v)*100)+'%';
-          bar.style.opacity = 0.4 + Math.abs(v)*0.6;
-          bars.appendChild(bar);
-        });
-        wrap.appendChild(bars);
+        var barsEl = document.createElement('div');
+        barsEl.className = 'vec-bars';
+        barsEl.style.width = '64px';
+        bars(barsEl, state.vecs[i]);
+        wrap.appendChild(barsEl);
         tokensEl.appendChild(wrap);
       });
       drawAttn();
@@ -1331,15 +1655,264 @@
         var pairs = state.words.map(function(w,j){ return {w:w, wt: state.weights[activeIdx][j]}; })
           .sort(function(a,b){ return b.wt-a.wt; });
         listEl.innerHTML = pairs.map(function(p){
-          return '<li><div><b>'+p.w+'</b><div class="bar" style="width:'+Math.round(p.wt*100)+'%"></div></div><span>'+(p.wt*100).toFixed(1)+'%</span></li>';
+          // p.w comes straight from the user-editable sentence input, so it
+          // must be escaped before going into innerHTML (unlike the tokenizer
+          // chips, which already did this correctly).
+          return '<li><div><b>'+escapeHtml(p.w)+'</b><div class="bar" style="width:'+Math.round(p.wt*100)+'%"></div></div><span>'+(p.wt*100).toFixed(1)+'%</span></li>';
         }).join('');
+        blendedEl.style.display = '';
+        bars(blendedEl.querySelector('.vec-bars'), state.blended[activeIdx]);
       } else {
         listEl.innerHTML = '<li class="muted" style="border:none;">Click a token above to isolate what it attends to</li>';
+        blendedEl.style.display = 'none';
       }
     }
 
     input.addEventListener('input', function(){ activeIdx=null; renderTokens(); });
     renderTokens();
+  })();
+
+  /* ============================================================
+     07. CLASSIFICATION / CONFUSION MATRIX PLAYGROUND
+  ============================================================ */
+  (function initClassify(){
+    var canvas = document.getElementById('classifyCanvas');
+    var ctx = canvas.getContext('2d');
+    var threshSlider = document.getElementById('threshSlider');
+    var threshVal = document.getElementById('threshVal');
+    var threshLabel = document.getElementById('classifyThreshLabel');
+    var regenBtn = document.getElementById('classifyRegen');
+    var accEl = document.getElementById('classifyAcc');
+    var precEl = document.getElementById('classifyPrec');
+    var recEl = document.getElementById('classifyRec');
+    var grid = document.getElementById('confusionGrid');
+
+    var pts = [];
+    function gaussian(mean, sd){
+      var u = Math.random() || 1e-6, v = Math.random();
+      return mean + sd * Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+    }
+    function clamp01(v){ return Math.max(0.03, Math.min(0.97, v)); }
+    function genData(){
+      pts = [];
+      for(var i=0;i<50;i++) pts.push({ x: clamp01(gaussian(0.32,0.15)), y: clamp01(gaussian(0.38,0.15)), label:0 });
+      for(var j=0;j<50;j++) pts.push({ x: clamp01(gaussian(0.63,0.16)), y: clamp01(gaussian(0.58,0.16)), label:1 });
+    }
+    function score(p){ return (p.x + p.y) / 2; } // fixed diagonal separator, not learned -- the point is the threshold, not the model
+
+    function draw(){
+      var W = canvas.width, H = canvas.height, pad = 20;
+      ctx.clearRect(0,0,W,H);
+      function toPx(p){ return { x: pad + p.x*(W-2*pad), y: H-pad - p.y*(H-2*pad) }; }
+
+      var t = parseInt(threshSlider.value,10)/100;
+      threshVal.textContent = t.toFixed(2); threshLabel.textContent = 'threshold = ' + t.toFixed(2);
+
+      // decision boundary: score(x,y) = (x+y)/2 = t  =>  x+y = 2t
+      ctx.strokeStyle = cssVar('--ink'); ctx.lineWidth = 2; ctx.setLineDash([6,4]);
+      var a = toPx({x: Math.max(0,2*t-1), y: Math.min(1,2*t)});
+      var b = toPx({x: Math.min(1,2*t), y: Math.max(0,2*t-1)});
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+      ctx.setLineDash([]);
+
+      var tp=0, fp=0, tn=0, fn=0;
+      pts.forEach(function(p){
+        var pred = score(p) >= t ? 1 : 0;
+        if(pred===1 && p.label===1) tp++;
+        else if(pred===1 && p.label===0) fp++;
+        else if(pred===0 && p.label===1) fn++;
+        else tn++;
+        var px = toPx(p);
+        var correct = pred === p.label;
+        ctx.beginPath();
+        if(p.label===1){ // spam: filled triangle
+          ctx.moveTo(px.x, px.y-6); ctx.lineTo(px.x-5.5, px.y+5); ctx.lineTo(px.x+5.5, px.y+5); ctx.closePath();
+        } else { // not spam: circle
+          ctx.arc(px.x, px.y, 5, 0, Math.PI*2);
+        }
+        ctx.fillStyle = p.label===1 ? cssVar('--accent') : cssVar('--accent2');
+        ctx.globalAlpha = correct ? 0.95 : 0.35;
+        ctx.fill();
+        if(!correct){ ctx.strokeStyle = cssVar('--neg'); ctx.lineWidth = 1.5; ctx.globalAlpha=1; ctx.stroke(); }
+        ctx.globalAlpha = 1;
+      });
+
+      var total = pts.length;
+      var acc = (tp+tn)/total;
+      var prec = (tp+fp) > 0 ? tp/(tp+fp) : 0;
+      var rec = (tp+fn) > 0 ? tp/(tp+fn) : 0;
+      accEl.textContent = Math.round(acc*100)+'%';
+      precEl.textContent = Math.round(prec*100)+'%';
+      recEl.textContent = Math.round(rec*100)+'%';
+
+      grid.innerHTML =
+        '<div class="hdr"></div><div class="hdr">Predicted: not spam</div><div class="hdr">Predicted: spam</div>' +
+        '<div class="hdr" style="justify-content:flex-end;">Actual: not spam</div>' +
+        '<div class="correct"><span class="count">'+tn+'</span><span class="sub">true negative</span></div>' +
+        '<div class="wrong"><span class="count">'+fp+'</span><span class="sub">false positive</span></div>' +
+        '<div class="hdr" style="justify-content:flex-end;">Actual: spam</div>' +
+        '<div class="wrong"><span class="count">'+fn+'</span><span class="sub">false negative</span></div>' +
+        '<div class="correct"><span class="count">'+tp+'</span><span class="sub">true positive</span></div>';
+    }
+
+    threshSlider.addEventListener('input', draw);
+    regenBtn.addEventListener('click', function(){ genData(); draw(); });
+    genData(); draw();
+  })();
+
+  /* ============================================================
+     08. CNN KERNEL / CONVOLUTION PLAYGROUND
+  ============================================================ */
+  (function initCNN(){
+    var kernelGrid = document.getElementById('kernelGrid');
+    var inCanvas = document.getElementById('cnnCanvas');
+    var outCanvas = document.getElementById('cnnOutCanvas');
+    var inCtx = inCanvas.getContext('2d');
+    var outCtx = outCanvas.getContext('2d');
+    var GRID = 10, CELL = inCanvas.width / GRID;
+
+    var pixels = [];
+    for(var r=0;r<GRID;r++){ var row=[]; for(var c=0;c<GRID;c++) row.push(0); pixels.push(row); }
+    // draw a default plus-sign so there's an obvious edge to find immediately
+    for(var i=0;i<GRID;i++){ pixels[Math.floor(GRID/2)][i]=1; pixels[i][Math.floor(GRID/2)]=1; }
+
+    var KERNEL_PRESETS = {
+      edge:     [[0,-1,0],[-1,4,-1],[0,-1,0]],
+      blur:     [[1/9,1/9,1/9],[1/9,1/9,1/9],[1/9,1/9,1/9]],
+      sharpen:  [[0,-1,0],[-1,5,-1],[0,-1,0]],
+      identity: [[0,0,0],[0,1,0],[0,0,0]]
+    };
+    var kernel = KERNEL_PRESETS.edge.map(function(row){ return row.slice(); });
+    var kernelInputs = [];
+
+    function buildKernelInputs(){
+      kernelGrid.innerHTML = '';
+      kernelInputs = [];
+      for(var r=0;r<3;r++){
+        for(var c=0;c<3;c++){
+          (function(r,c){
+            var inp = document.createElement('input');
+            inp.type = 'text';
+            inp.inputMode = 'decimal';
+            inp.value = round2(kernel[r][c]);
+            inp.setAttribute('aria-label', 'Kernel value, row '+(r+1)+' column '+(c+1));
+            inp.addEventListener('change', function(){
+              var v = parseFloat(inp.value);
+              kernel[r][c] = isFinite(v) ? v : 0;
+              inp.value = round2(kernel[r][c]);
+              drawOutput();
+            });
+            kernelGrid.appendChild(inp);
+            kernelInputs.push(inp);
+          })(r,c);
+        }
+      }
+    }
+    function round2(v){ return Math.round(v*100)/100; }
+    function syncKernelInputs(){
+      var k=0;
+      for(var r=0;r<3;r++) for(var c=0;c<3;c++){ kernelInputs[k].value = round2(kernel[r][c]); k++; }
+    }
+
+    function drawInput(){
+      inCtx.clearRect(0,0,inCanvas.width,inCanvas.height);
+      for(var r=0;r<GRID;r++){
+        for(var c=0;c<GRID;c++){
+          var v = pixels[r][c];
+          inCtx.fillStyle = 'rgb('+[255-v*255,255-v*255,255-v*255].map(Math.round).join(',')+')';
+          inCtx.fillRect(c*CELL, r*CELL, CELL, CELL);
+        }
+      }
+      inCtx.strokeStyle = 'rgba(128,128,128,0.25)';
+      for(var g=0;g<=GRID;g++){
+        inCtx.beginPath(); inCtx.moveTo(g*CELL,0); inCtx.lineTo(g*CELL,inCanvas.height); inCtx.stroke();
+        inCtx.beginPath(); inCtx.moveTo(0,g*CELL); inCtx.lineTo(inCanvas.width,g*CELL); inCtx.stroke();
+      }
+    }
+
+    function drawOutput(){
+      var out = [];
+      var maxAbs = 0.0001;
+      for(var r=0;r<GRID;r++){
+        var row = [];
+        for(var c=0;c<GRID;c++){
+          var sum = 0;
+          for(var kr=-1;kr<=1;kr++){
+            for(var kc=-1;kc<=1;kc++){
+              var rr = r+kr, cc = c+kc;
+              var val = (rr>=0 && rr<GRID && cc>=0 && cc<GRID) ? pixels[rr][cc] : 0;
+              sum += val * kernel[kr+1][kc+1];
+            }
+          }
+          row.push(sum);
+          maxAbs = Math.max(maxAbs, Math.abs(sum));
+        }
+        out.push(row);
+      }
+      outCtx.clearRect(0,0,outCanvas.width,outCanvas.height);
+      for(r=0;r<GRID;r++){
+        for(c=0;c<GRID;c++){
+          var t = out[r][c] / maxAbs; // -1..1
+          var shade = Math.round(128 - t*128);
+          outCtx.fillStyle = 'rgb('+shade+','+shade+','+shade+')';
+          outCtx.fillRect(c*CELL, r*CELL, CELL, CELL);
+        }
+      }
+    }
+
+    function cellFromEvent(e, canvas){
+      var rect = canvas.getBoundingClientRect();
+      var scaleX = canvas.width/rect.width, scaleY = canvas.height/rect.height;
+      var x = (e.clientX-rect.left)*scaleX, y = (e.clientY-rect.top)*scaleY;
+      return { r: Math.floor(y/CELL), c: Math.floor(x/CELL) };
+    }
+    var painting = false, paintValue = 1;
+    inCanvas.addEventListener('pointerdown', function(e){
+      var cell = cellFromEvent(e, inCanvas);
+      if(cell.r<0||cell.r>=GRID||cell.c<0||cell.c>=GRID) return;
+      paintValue = pixels[cell.r][cell.c] > 0.5 ? 0 : 1;
+      pixels[cell.r][cell.c] = paintValue;
+      painting = true;
+      inCanvas.setPointerCapture(e.pointerId);
+      drawInput(); drawOutput();
+    });
+    inCanvas.addEventListener('pointermove', function(e){
+      if(!painting) return;
+      var cell = cellFromEvent(e, inCanvas);
+      if(cell.r<0||cell.r>=GRID||cell.c<0||cell.c>=GRID) return;
+      pixels[cell.r][cell.c] = paintValue;
+      drawInput(); drawOutput();
+    });
+    inCanvas.addEventListener('pointerup', function(){ painting = false; });
+
+    document.querySelectorAll('[data-kernel]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var name = btn.getAttribute('data-kernel');
+        kernel = KERNEL_PRESETS[name].map(function(row){ return row.slice(); });
+        syncKernelInputs();
+        drawOutput();
+      });
+    });
+
+    buildKernelInputs();
+    drawInput();
+    drawOutput();
+  })();
+
+  /* ============================================================
+     09. TRAINING VS PROMPTING TOGGLE
+  ============================================================ */
+  (function initCompare(){
+    var buttons = document.querySelectorAll('[data-compare]');
+    var panels = { train: document.getElementById('comparePanelTrain'), prompt: document.getElementById('comparePanelPrompt') };
+    buttons.forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var mode = btn.getAttribute('data-compare');
+        buttons.forEach(function(b){ b.classList.remove('active'); b.setAttribute('aria-selected','false'); });
+        btn.classList.add('active'); btn.setAttribute('aria-selected','true');
+        Object.keys(panels).forEach(function(k){ panels[k].classList.toggle('active', k===mode); });
+      });
+    });
   })();
 
 })();
