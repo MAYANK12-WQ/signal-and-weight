@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="A hands-on, click-and-drag primer on machine learning: glossary, curve-fitting, gradient descent, neurons, tokenization, embeddings, attention, classification, and CNN filters, all playable in the browser.">
+<meta name="description" content="A hands-on, click-and-drag primer on machine learning with live charts: glossary, curve-fitting, gradient descent, neurons, tokenization, embeddings, attention, classification, and CNN filters, all playable in the browser.">
 <title>Signal & Weight</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -317,6 +317,10 @@
   .compare-box.locked{ border-color:var(--neg); color:var(--neg); }
   .compare-box.open{ border-color:var(--pos); color:var(--pos); }
   .compare-arrow{ color:var(--muted); font-size:18px; }
+
+  /* ---------- line charts ---------- */
+  .chart-legend{ display:flex; gap:18px; flex-wrap:wrap; margin-top:10px; font-family:var(--font-mono); font-size:11.5px; color:var(--muted); }
+  .chart-legend .sw{ display:inline-block; width:14px; height:3px; margin-right:6px; vertical-align:middle; border-radius:2px; }
 </style>
 </head>
 <body>
@@ -390,7 +394,16 @@
           <div class="readout"><div class="k">Verdict</div><div class="v" id="fitVerdict" style="font-size:14px;">–</div></div>
         </div>
       </div>
-      <div class="callout"><span class="lbl">Why this matters</span><p>Low degree ignores the pattern (<b>underfitting</b>). Very high degree memorizes the noise in these exact 18 points instead of the shape underneath (<b>overfitting</b>) — training error drops to near zero while error on new points climbs back up. The sweet spot is wherever test error is lowest, not where training error is lowest.</p></div>
+      <div class="panel">
+        <div class="panel-title"><span>The chart every ML course eventually shows you</span><span></span></div>
+        <div class="canvas-wrap"><canvas id="fitErrorChart" width="760" height="200" role="img" aria-label="Line chart of training and test error against model complexity, with a marker at the current degree"></canvas></div>
+        <div class="chart-legend">
+          <span><i class="sw" style="background:var(--ink)"></i>Training error</span>
+          <span><i class="sw" style="background:var(--neg)"></i>Test error</span>
+          <span>Sweep the slider above and watch where the gap between the two lines opens up.</span>
+        </div>
+      </div>
+      <div class="callout"><span class="lbl">Why this matters</span><p>Low degree ignores the pattern (<b>underfitting</b>). Very high degree memorizes the noise in these exact 18 points instead of the shape underneath (<b>overfitting</b>) — training error drops to near zero while error on new points climbs back up. The sweet spot is wherever test error is lowest, not where training error is lowest — the classic U-shaped curve in the chart above.</p></div>
     </section>
 
     <!-- ================= 02 GRADIENT DESCENT ================= -->
@@ -416,6 +429,11 @@
           <div class="readout"><div class="k">Error (height)</div><div class="v mono" id="ballY">–</div></div>
           <div class="readout"><div class="k">Slope here</div><div class="v mono" id="ballSlope">–</div></div>
         </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><span>Error over time</span><span></span></div>
+        <div class="canvas-wrap"><canvas id="descentLossChart" width="760" height="160" role="img" aria-label="Line chart of error decreasing over each gradient descent step"></canvas></div>
+        <div class="chart-legend"><span>This is the number "training" is actually trying to shrink — every step above is one point on this line.</span></div>
       </div>
       <div class="callout"><span class="lbl">Try this</span><p>Leave the ball where it starts, on the left, and run it. With a small-to-medium learning rate it settles into that shallower dip near x≈-1.7 (a <b>local minimum</b>) and stays there — pure gradient descent only ever looks at the slope right under its feet, so it has no way to know a truly lower point exists near x≈1.76 on the right (the <b>global minimum</b>). Now crank the learning rate all the way up: a big enough step can accidentally leap over the hump in between and land closer to the real minimum — which shows why "just raise the learning rate" isn't a real fix, it's a gamble.</p></div>
     </section>
@@ -545,6 +563,11 @@
       <div class="panel">
         <div class="panel-title"><span>Confusion matrix</span><span></span></div>
         <div class="canvas-wrap"><div class="confusion-grid" id="confusionGrid" role="table" aria-label="Confusion matrix of predicted versus actual class"></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><span>Precision-recall curve, every threshold at once</span><span></span></div>
+        <div class="canvas-wrap"><canvas id="prCurveChart" width="420" height="360" role="img" aria-label="Precision versus recall curve across every possible threshold, with the current threshold marked"></canvas></div>
+        <div class="chart-legend"><span>The dot is your current threshold. Sliding it just moves you along this fixed curve — it never lets you have both precision and recall at once.</span></div>
       </div>
       <div class="callout"><span class="lbl">Try this</span><p>Drag the threshold to the far left: everything gets called "spam," recall hits 100% (no real spam is ever missed) but precision collapses (most things flagged aren't actually spam). Drag it to the far right and the opposite happens. <b>There is no single threshold that's correct</b> — it's a real trade-off you choose based on which mistake is more expensive: a spam email in your inbox, or a real one in your spam folder.</p></div>
     </section>
@@ -792,6 +815,8 @@
     var testErrEl = document.getElementById('testErr');
     var verdictEl = document.getElementById('fitVerdict');
     var regenBtn = document.getElementById('fitRegen');
+    var errChart = document.getElementById('fitErrorChart');
+    var errCtx = errChart.getContext('2d');
 
     var trainPts = [], testPts = [];
 
@@ -892,6 +917,55 @@
       else if(teErr > trErr*2.2 && degree >= 6) verdict = 'Overfitting — memorizing noise';
       verdictEl.textContent = verdict;
       degLabel.textContent = degree; degVal.textContent = degree;
+
+      drawErrorChart(degree);
+    }
+
+    // The classic bias-variance chart: training error keeps falling as
+    // complexity rises, but test error bottoms out and climbs back up --
+    // recomputed against the *current* dataset every time it's drawn, so
+    // regenerating the data or moving the slider both keep it honest.
+    function drawErrorChart(currentDegree){
+      var W = errChart.width, H = errChart.height, pad = 36;
+      errCtx.clearRect(0,0,W,H);
+      var degrees = [1,2,3,4,5,6,7,8,9];
+      var trainErrs = [], testErrs = [];
+      degrees.forEach(function(d){
+        var c = polyFit(trainPts, d);
+        trainErrs.push(mse(trainPts, c));
+        testErrs.push(mse(testPts, c));
+      });
+      var maxErr = Math.max.apply(null, trainErrs.concat(testErrs).map(function(e){ return Math.min(e, 2); }));
+      maxErr = Math.max(maxErr, 0.05);
+
+      function px(d){ return pad + (d-1)/8 * (W-2*pad); }
+      function py(e){ return H-pad - Math.min(e,2)/maxErr * (H-2*pad); }
+
+      errCtx.strokeStyle = cssVar('--hair'); errCtx.lineWidth = 1;
+      errCtx.beginPath(); errCtx.moveTo(pad, H-pad); errCtx.lineTo(W-pad, H-pad); errCtx.stroke();
+
+      function drawLine(values, color){
+        errCtx.strokeStyle = color; errCtx.lineWidth = 2;
+        errCtx.beginPath();
+        degrees.forEach(function(d,i){
+          var x = px(d), y = py(values[i]);
+          if(i===0) errCtx.moveTo(x,y); else errCtx.lineTo(x,y);
+        });
+        errCtx.stroke();
+      }
+      drawLine(trainErrs, cssVar('--ink'));
+      drawLine(testErrs, cssVar('--neg'));
+
+      // marker at the currently selected degree
+      var mx = px(currentDegree);
+      errCtx.strokeStyle = cssVar('--accent'); errCtx.lineWidth = 1; errCtx.setLineDash([3,3]);
+      errCtx.beginPath(); errCtx.moveTo(mx, pad); errCtx.lineTo(mx, H-pad); errCtx.stroke();
+      errCtx.setLineDash([]);
+
+      errCtx.fillStyle = cssVar('--muted'); errCtx.font = '11px IBM Plex Mono, monospace'; errCtx.textAlign = 'center';
+      degrees.forEach(function(d){ errCtx.fillText(String(d), px(d), H-pad+16); });
+      errCtx.textAlign = 'left';
+      errCtx.fillText('model complexity (degree) →', pad, H-8);
     }
 
     degSlider.addEventListener('input', draw);
@@ -914,12 +988,15 @@
     var ballXEl = document.getElementById('ballX');
     var ballYEl = document.getElementById('ballY');
     var ballSlopeEl = document.getElementById('ballSlope');
+    var lossChart = document.getElementById('descentLossChart');
+    var lossCtx = lossChart.getContext('2d');
 
     var xMin=-3, xMax=3;
     function f(x){ return 0.15*Math.pow(x,4) - 0.9*x*x - 0.1*x + 5; }
     function fp(x){ return 0.6*Math.pow(x,3) - 1.8*x - 0.1; }
 
     var ballX = -2.6, trail = [], steps = 0, running = false;
+    var lossHistory = [f(ballX)];
 
     function lr(){ return parseInt(lrSlider.value,10)/1000; }
     lrSlider.addEventListener('input', function(){ lrVal.textContent = lr().toFixed(3); });
@@ -959,6 +1036,33 @@
       ballYEl.textContent = f(ballX).toFixed(2);
       ballSlopeEl.textContent = fp(ballX).toFixed(2);
       stepCountEl.textContent = steps + (steps===1 ? ' step' : ' steps');
+      drawLossChart();
+    }
+
+    function drawLossChart(){
+      var W = lossChart.width, H = lossChart.height, pad = 30;
+      lossCtx.clearRect(0,0,W,H);
+      var n = lossHistory.length;
+      var maxY = Math.max.apply(null, lossHistory), minY = Math.min.apply(null, lossHistory);
+      if(maxY - minY < 0.3){ maxY += 0.15; minY -= 0.15; }
+      function px(i){ return n<=1 ? pad : pad + i/(n-1) * (W-2*pad); }
+      function py(v){ return H-pad - (v-minY)/(maxY-minY) * (H-2*pad); }
+
+      lossCtx.strokeStyle = cssVar('--hair'); lossCtx.lineWidth = 1;
+      lossCtx.beginPath(); lossCtx.moveTo(pad, H-pad); lossCtx.lineTo(W-pad, H-pad); lossCtx.stroke();
+
+      lossCtx.strokeStyle = cssVar('--accent2'); lossCtx.lineWidth = 2;
+      lossCtx.beginPath();
+      lossHistory.forEach(function(v,i){ var x=px(i), y=py(v); if(i===0) lossCtx.moveTo(x,y); else lossCtx.lineTo(x,y); });
+      lossCtx.stroke();
+
+      if(n>0){
+        var lastX = px(n-1), lastY = py(lossHistory[n-1]);
+        lossCtx.beginPath(); lossCtx.arc(lastX, lastY, 4, 0, Math.PI*2);
+        lossCtx.fillStyle = cssVar('--accent'); lossCtx.fill();
+      }
+      lossCtx.fillStyle = cssVar('--muted'); lossCtx.font = '11px IBM Plex Mono, monospace'; lossCtx.textAlign = 'left';
+      lossCtx.fillText('step →', pad, H-10);
     }
 
     function doStep(){
@@ -968,6 +1072,8 @@
       ballX = ballX - lr()*grad*8;
       ballX = Math.max(xMin+0.05, Math.min(xMax-0.05, ballX));
       steps++;
+      lossHistory.push(f(ballX));
+      if(lossHistory.length > 260) lossHistory.shift();
       draw();
     }
 
@@ -979,10 +1085,11 @@
       var x = xMin + (mx-pad)/(W-2*pad)*(xMax-xMin);
       ballX = Math.max(xMin+0.05, Math.min(xMax-0.05, x));
       trail = []; steps = 0; running = false;
+      lossHistory = [f(ballX)];
       draw();
     });
     stepBtn.addEventListener('click', function(){ running=false; doStep(); });
-    resetBtn.addEventListener('click', function(){ ballX=-2.6; trail=[]; steps=0; running=false; draw(); });
+    resetBtn.addEventListener('click', function(){ ballX=-2.6; trail=[]; steps=0; running=false; lossHistory=[f(ballX)]; draw(); });
     runBtn.addEventListener('click', function(){
       if(running) return; // a second click while already running would start a concurrent loop over the same shared ballX/steps
       running = true;
@@ -1686,6 +1793,8 @@
     var precEl = document.getElementById('classifyPrec');
     var recEl = document.getElementById('classifyRec');
     var grid = document.getElementById('confusionGrid');
+    var prCanvas = document.getElementById('prCurveChart');
+    var prCtx = prCanvas.getContext('2d');
 
     var pts = [];
     function gaussian(mean, sd){
@@ -1753,6 +1862,48 @@
         '<div class="hdr" style="justify-content:flex-end;">Actual: spam</div>' +
         '<div class="wrong"><span class="count">'+fn+'</span><span class="sub">false negative</span></div>' +
         '<div class="correct"><span class="count">'+tp+'</span><span class="sub">true positive</span></div>';
+
+      drawPRCurve(t, prec, rec);
+    }
+
+    // Sweeps every possible threshold against the *current* dataset to trace
+    // the full precision/recall trade-off curve, then marks where today's
+    // slider position actually sits on it.
+    function drawPRCurve(currentT, currentPrec, currentRec){
+      var W = prCanvas.width, H = prCanvas.height, pad = 40;
+      prCtx.clearRect(0,0,W,H);
+      function toXY(recall, precision){ return { x: pad + recall*(W-2*pad), y: H-pad - precision*(H-2*pad) }; }
+
+      prCtx.strokeStyle = cssVar('--hair'); prCtx.lineWidth = 1;
+      prCtx.strokeRect(pad, pad, W-2*pad, H-2*pad);
+
+      var curvePts = [];
+      for(var i=0;i<=100;i++){
+        var tt = i/100;
+        var ctp=0, cfp=0, cfn=0;
+        pts.forEach(function(p){
+          var pred = score(p) >= tt ? 1 : 0;
+          if(pred===1 && p.label===1) ctp++;
+          else if(pred===1 && p.label===0) cfp++;
+          else if(pred===0 && p.label===1) cfn++;
+        });
+        var pr = (ctp+cfp) > 0 ? ctp/(ctp+cfp) : 1;
+        var rc = (ctp+cfn) > 0 ? ctp/(ctp+cfn) : 0;
+        curvePts.push(toXY(rc, pr));
+      }
+      prCtx.strokeStyle = cssVar('--accent2'); prCtx.lineWidth = 2.5;
+      prCtx.beginPath();
+      curvePts.forEach(function(p,i){ if(i===0) prCtx.moveTo(p.x,p.y); else prCtx.lineTo(p.x,p.y); });
+      prCtx.stroke();
+
+      var here = toXY(currentRec, currentPrec);
+      prCtx.beginPath(); prCtx.arc(here.x, here.y, 6, 0, Math.PI*2);
+      prCtx.fillStyle = cssVar('--accent'); prCtx.fill();
+      prCtx.strokeStyle = cssVar('--ink'); prCtx.lineWidth = 1.5; prCtx.stroke();
+
+      prCtx.fillStyle = cssVar('--muted'); prCtx.font = '11px IBM Plex Mono, monospace';
+      prCtx.textAlign = 'center'; prCtx.fillText('recall →', W/2, H-12);
+      prCtx.save(); prCtx.translate(14, H/2); prCtx.rotate(-Math.PI/2); prCtx.fillText('precision →', 0, 0); prCtx.restore();
     }
 
     threshSlider.addEventListener('input', draw);
